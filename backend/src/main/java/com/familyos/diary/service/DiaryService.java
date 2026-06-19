@@ -11,11 +11,15 @@ import com.familyos.common.error.NotFoundException;
 import com.familyos.common.security.VisibilityGuard;
 import com.familyos.diary.dto.DiaryRequest;
 import com.familyos.diary.dto.DiaryResponse;
+import com.familyos.diary.dto.DiaryResponse.PhotoRef;
 import com.familyos.diary.entity.Diary;
 import com.familyos.diary.entity.DiarySubject;
 import com.familyos.diary.repository.DiaryRepository;
 import com.familyos.diary.repository.DiarySubjectRepository;
 import com.familyos.person.repository.FamilyMembershipRepository;
+import com.familyos.photo.entity.Photo;
+import com.familyos.photo.repository.PhotoRepository;
+import com.familyos.storage.UrlSigner;
 import com.familyos.tag.entity.DiaryTag;
 import com.familyos.tag.entity.Tag;
 import com.familyos.tag.repository.DiaryTagRepository;
@@ -46,6 +50,8 @@ public class DiaryService {
     private final TagRepository tagRepository;
     private final FamilyMembershipRepository membershipRepository;
     private final CollectionRepository collectionRepository;
+    private final PhotoRepository photoRepository;
+    private final UrlSigner urlSigner;
     private final VisibilityGuard visibilityGuard;
     private final SoftDeleteSupport softDeleteSupport;
 
@@ -55,6 +61,8 @@ public class DiaryService {
                         TagRepository tagRepository,
                         FamilyMembershipRepository membershipRepository,
                         CollectionRepository collectionRepository,
+                        PhotoRepository photoRepository,
+                        UrlSigner urlSigner,
                         VisibilityGuard visibilityGuard,
                         SoftDeleteSupport softDeleteSupport) {
         this.diaryRepository = diaryRepository;
@@ -63,6 +71,8 @@ public class DiaryService {
         this.tagRepository = tagRepository;
         this.membershipRepository = membershipRepository;
         this.collectionRepository = collectionRepository;
+        this.photoRepository = photoRepository;
+        this.urlSigner = urlSigner;
         this.visibilityGuard = visibilityGuard;
         this.softDeleteSupport = softDeleteSupport;
     }
@@ -81,11 +91,13 @@ public class DiaryService {
                 .stream().collect(Collectors.groupingBy(DiarySubject::getDiaryId,
                         Collectors.mapping(DiarySubject::getPersonId, Collectors.toList())));
         Map<Long, List<String>> tagsByDiary = loadTagNames(user.familyId(), ids);
+        Map<Long, List<PhotoRef>> photosByDiary = loadPhotos(user.familyId(), ids);
 
         return diaries.stream()
                 .map(d -> toResponse(d,
                         subjectsByDiary.getOrDefault(d.getId(), List.of()),
-                        tagsByDiary.getOrDefault(d.getId(), List.of())))
+                        tagsByDiary.getOrDefault(d.getId(), List.of()),
+                        photosByDiary.getOrDefault(d.getId(), List.of())))
                 .toList();
     }
 
@@ -108,7 +120,8 @@ public class DiaryService {
         subjects.forEach(pid -> subjectRepository.save(new DiarySubject(familyId, diary.getId(), pid)));
         tagIds.forEach(tid -> diaryTagRepository.save(new DiaryTag(familyId, diary.getId(), tid)));
 
-        return toResponse(diary, List.copyOf(subjects), resolveTagNames(familyId, tagIds));
+        // 신규 기록은 사진이 아직 없음(사진은 presign 시 diaryId 로 연결)
+        return toResponse(diary, List.copyOf(subjects), resolveTagNames(familyId, tagIds), List.of());
     }
 
     @Transactional
@@ -134,7 +147,8 @@ public class DiaryService {
         syncSubjects(familyId, id, subjects);
         syncTags(familyId, id, tagIds);
 
-        return toResponse(diary, List.copyOf(subjects), resolveTagNames(familyId, tagIds));
+        return toResponse(diary, List.copyOf(subjects), resolveTagNames(familyId, tagIds),
+                photosFor(familyId, id));
     }
 
     @Transactional
@@ -202,11 +216,29 @@ public class DiaryService {
 
     // ---- 응답 ----
 
-    private DiaryResponse toResponse(Diary d, List<Long> subjects, List<String> tags) {
+    private DiaryResponse toResponse(Diary d, List<Long> subjects, List<String> tags, List<PhotoRef> photos) {
         return new DiaryResponse(
                 d.getId(), d.getTitle(), d.getContent(), d.getVisibility(),
-                d.getRecordedAt(), d.getRecordedOn(), subjects, d.getCollectionId(), tags,
-                List.of()); // photos: photo 도메인에서 채움
+                d.getRecordedAt(), d.getRecordedOn(), subjects, d.getCollectionId(), tags, photos);
+    }
+
+    /** 단건 기록의 사진(서명 URL 포함). */
+    private List<PhotoRef> photosFor(Long familyId, Long diaryId) {
+        return photoRepository.findByDiaryIdAndFamilyId(diaryId, familyId).stream()
+                .map(this::toPhotoRef).toList();
+    }
+
+    /** 목록: diaryId → 사진 목록(서명 URL). */
+    private Map<Long, List<PhotoRef>> loadPhotos(Long familyId, List<Long> diaryIds) {
+        return photoRepository.findByDiaryIdInAndFamilyId(diaryIds, familyId).stream()
+                .collect(Collectors.groupingBy(Photo::getDiaryId,
+                        Collectors.mapping(this::toPhotoRef, Collectors.toList())));
+    }
+
+    private PhotoRef toPhotoRef(Photo p) {
+        long exp = urlSigner.expiryEpochSecond();
+        String url = "/api/v1/photos/" + p.getId() + "/raw?exp=" + exp + "&sig=" + urlSigner.sign(p.getId(), exp);
+        return new PhotoRef(p.getId(), url, p.getWidth(), p.getHeight(), p.getTakenAt());
     }
 
     private Map<Long, List<String>> loadTagNames(Long familyId, List<Long> diaryIds) {

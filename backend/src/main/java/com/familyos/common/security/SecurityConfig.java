@@ -59,6 +59,8 @@ public class SecurityConfig {
                                 "/api/v1/auth/refresh"
                         ).permitAll()
                         .requestMatchers("/actuator/health").permitAll()
+                        // 사진 raw 서빙: 서명(HMAC)+만료가 곧 권한(capability URL) → 헤더 인증 면제
+                        .requestMatchers(HttpMethod.GET, "/api/v1/photos/*/raw").permitAll()
                         // 구글 webhook 등 공개 콜백은 추후 별도 permitAll + 채널토큰 검증으로 추가
                         .anyRequest().authenticated())
                 .addFilterBefore(new JwtAuthenticationFilter(jwtProvider),

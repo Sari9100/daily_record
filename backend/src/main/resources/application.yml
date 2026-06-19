@@ -39,6 +39,12 @@ app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:8081,http://localhost:19006}
 
+  # 파일 스토리지 (외장 SSD 우선, 클라우드 이식 가능)
+  storage:
+    local-root: ${STORAGE_LOCAL_ROOT:./var/storage}
+    url-secret: ${STORAGE_URL_SECRET}       # 서명 URL HMAC 시크릿 (.env, 커밋 금지)
+    url-ttl: PT10M                            # 서명 조회 URL 유효시간
+
   # 최초 부트스트랩 — DB 가 비어있을 때만 1회 시드(멱등). 자격증명은 .env 로만 주입(커밋 금지)
   bootstrap:
     enabled: ${BOOTSTRAP_ENABLED:true}

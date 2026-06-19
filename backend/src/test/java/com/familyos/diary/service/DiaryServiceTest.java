@@ -45,6 +45,8 @@ class DiaryServiceTest {
     @Mock TagRepository tagRepository;
     @Mock FamilyMembershipRepository membershipRepository;
     @Mock CollectionRepository collectionRepository;
+    @Mock com.familyos.photo.repository.PhotoRepository photoRepository;
+    @Mock com.familyos.storage.UrlSigner urlSigner;
     @Mock VisibilityGuard visibilityGuard;
     @Mock SoftDeleteSupport softDeleteSupport;
 
@@ -53,7 +55,8 @@ class DiaryServiceTest {
     @BeforeEach
     void setUp() {
         service = new DiaryService(diaryRepository, subjectRepository, diaryTagRepository, tagRepository,
-                membershipRepository, collectionRepository, visibilityGuard, softDeleteSupport);
+                membershipRepository, collectionRepository, photoRepository, urlSigner,
+                visibilityGuard, softDeleteSupport);
         FamilyContext.set(new AuthUser(1L, 10L, FAMILY_ID, FamilyRole.PARENT));
     }
 
