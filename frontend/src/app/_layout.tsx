@@ -51,6 +51,7 @@ function AuthGate() {
       />
       <Stack.Screen name="accounts" options={{ headerShown: true, title: '계좌 관리' }} />
       <Stack.Screen name="categories" options={{ headerShown: true, title: '카테고리 관리' }} />
+      <Stack.Screen name="statistics" options={{ headerShown: true, title: '통계' }} />
     </Stack>
   );
 }

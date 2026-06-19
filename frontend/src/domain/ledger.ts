@@ -91,3 +91,28 @@ export const CATEGORY_TYPE_LABEL: Record<CategoryType, string> = {
   EXPENSE: '지출',
   INCOME: '수입',
 };
+
+// ---- 통계 ----
+
+export type StatScope = 'ALL' | 'PRIVATE' | 'PARENTS';
+
+export type CategoryStat = {
+  categoryId: number;
+  name: string | null;
+  type: CategoryType | null;
+  amount: number;
+};
+
+export type MonthStat = {
+  /** "YYYY-MM" (뷰어 timezone 기준) */
+  month: string;
+  income: number;
+  expense: number;
+};
+
+export type Statistics = {
+  totalIncome: number;
+  totalExpense: number;
+  byCategory: CategoryStat[];
+  byMonth: MonthStat[];
+};

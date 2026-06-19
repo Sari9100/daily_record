@@ -58,6 +58,9 @@ export default function LedgerScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>가계부</Text>
         <View style={styles.headerLinks}>
+          <Pressable onPress={() => router.push('/statistics')} hitSlop={8}>
+            <Text style={styles.headerLink}>통계</Text>
+          </Pressable>
           <Pressable onPress={() => router.push('/accounts')} hitSlop={8}>
             <Text style={styles.headerLink}>계좌</Text>
           </Pressable>

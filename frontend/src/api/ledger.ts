@@ -7,6 +7,7 @@ import type {
   Category,
   CategoryCreate,
   CategoryType,
+  Statistics,
   Transaction,
   TransactionCreate,
   TransactionType,
@@ -46,6 +47,23 @@ export function useCachedTransaction(id: number): Transaction | undefined {
     if (found) return found;
   }
   return undefined;
+}
+
+export type StatisticsParams = { from?: string; to?: string; scope?: string };
+
+async function fetchStatistics(params: StatisticsParams): Promise<Statistics> {
+  const res = await api.get<ApiResponse<Statistics>>('/transactions/statistics', { params });
+  if (!res.data.data) {
+    throw new Error(res.data.error?.message ?? '통계를 불러오지 못했습니다.');
+  }
+  return res.data.data;
+}
+
+export function useStatistics(params: StatisticsParams) {
+  return useQuery({
+    queryKey: ['statistics', params],
+    queryFn: () => fetchStatistics(params),
+  });
 }
 
 async function fetchAccounts(): Promise<Account[]> {
