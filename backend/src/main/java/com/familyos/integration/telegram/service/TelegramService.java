@@ -16,11 +16,18 @@ import com.familyos.ledger.service.TransactionService;
 import com.familyos.ledger.service.TransactionStatisticsService;
 import com.familyos.person.entity.FamilyMembership;
 import com.familyos.person.repository.FamilyMembershipRepository;
+import com.familyos.schedule.dto.ScheduleResponse;
+import com.familyos.schedule.entity.ScheduleType;
+import com.familyos.schedule.service.ScheduleService;
+import com.familyos.timeline.dto.TimelineResponse;
+import com.familyos.timeline.service.TimelineService;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.util.List;
 import java.util.function.Supplier;
 
 /**
@@ -40,17 +47,23 @@ public class TelegramService {
     private final FamilyMembershipRepository membershipRepository;
     private final TransactionService transactionService;
     private final TransactionStatisticsService statisticsService;
+    private final TimelineService timelineService;
+    private final ScheduleService scheduleService;
     private final SoftDeleteSupport softDeleteSupport;
 
     public TelegramService(TelegramPersonMapRepository mapRepository,
                            FamilyMembershipRepository membershipRepository,
                            TransactionService transactionService,
                            TransactionStatisticsService statisticsService,
+                           TimelineService timelineService,
+                           ScheduleService scheduleService,
                            SoftDeleteSupport softDeleteSupport) {
         this.mapRepository = mapRepository;
         this.membershipRepository = membershipRepository;
         this.transactionService = transactionService;
         this.statisticsService = statisticsService;
+        this.timelineService = timelineService;
+        this.scheduleService = scheduleService;
         this.softDeleteSupport = softDeleteSupport;
     }
 
@@ -84,6 +97,18 @@ public class TelegramService {
     public StatisticsResponse statistics(Long telegramUserId, @Nullable Instant from, @Nullable Instant to,
                                          @Nullable String scope) {
         return actingAs(telegramUserId, () -> statisticsService.statistics(from, to, scope));
+    }
+
+    /** Hermes 조회(통합 타임라인). "오늘 타임라인" 등. */
+    public TimelineResponse timeline(Long telegramUserId, @Nullable LocalDate date,
+                                     @Nullable LocalDate from, @Nullable LocalDate to) {
+        return actingAs(telegramUserId, () -> timelineService.timeline(date, from, to));
+    }
+
+    /** Hermes 조회(일정). "내일 일정?" 등. visibility 권한 범위 내. */
+    public List<ScheduleResponse> schedules(Long telegramUserId, @Nullable Instant from, @Nullable Instant to,
+                                            @Nullable ScheduleType type, @Nullable String scope) {
+        return actingAs(telegramUserId, () -> scheduleService.list(from, to, type, scope));
     }
 
     // ---- 내부 ----

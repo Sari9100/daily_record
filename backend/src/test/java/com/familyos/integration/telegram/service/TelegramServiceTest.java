@@ -51,6 +51,8 @@ class TelegramServiceTest {
     @Mock FamilyMembershipRepository membershipRepository;
     @Mock TransactionService transactionService;
     @Mock TransactionStatisticsService statisticsService;
+    @Mock com.familyos.timeline.service.TimelineService timelineService;
+    @Mock com.familyos.schedule.service.ScheduleService scheduleService;
     @Mock SoftDeleteSupport softDeleteSupport;
 
     TelegramService service;
@@ -58,7 +60,7 @@ class TelegramServiceTest {
     @BeforeEach
     void setUp() {
         service = new TelegramService(mapRepository, membershipRepository,
-                transactionService, statisticsService, softDeleteSupport);
+                transactionService, statisticsService, timelineService, scheduleService, softDeleteSupport);
     }
 
     @AfterEach
