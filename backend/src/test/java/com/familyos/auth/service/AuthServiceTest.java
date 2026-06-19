@@ -4,8 +4,7 @@ import com.familyos.auth.dto.TokenResponse;
 import com.familyos.auth.entity.RefreshToken;
 import com.familyos.auth.repository.RefreshTokenRepository;
 import com.familyos.common.domain.FamilyRole;
-import com.familyos.common.error.BusinessException;
-import com.familyos.common.error.ErrorCode;
+import com.familyos.common.error.UnauthorizedException;
 import com.familyos.common.security.JwtProperties;
 import com.familyos.common.security.JwtProvider;
 import com.familyos.person.entity.Family;
@@ -130,8 +129,7 @@ class AuthServiceTest {
         when(graceCache.get(OLD_JTI)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> authService.refresh("token"))
-                .isInstanceOf(BusinessException.class)
-                .extracting("errorCode").isEqualTo(ErrorCode.UNAUTHENTICATED);
+                .isInstanceOf(UnauthorizedException.class);
 
         verify(refreshTokenRepository).revokeAllByAccountId(ACCOUNT_ID); // 탈취 의심 → 전체 폐기
     }
@@ -142,8 +140,7 @@ class AuthServiceTest {
         when(refreshTokenRepository.findByJti(OLD_JTI)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> authService.refresh("token"))
-                .isInstanceOf(BusinessException.class)
-                .extracting("errorCode").isEqualTo(ErrorCode.UNAUTHENTICATED);
+                .isInstanceOf(UnauthorizedException.class);
 
         verify(jwtProvider, never()).createAccessToken(any());
     }

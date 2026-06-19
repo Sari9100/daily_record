@@ -8,9 +8,8 @@ import com.familyos.auth.entity.RefreshToken;
 import com.familyos.auth.repository.RefreshTokenRepository;
 import com.familyos.common.context.AuthUser;
 import com.familyos.common.context.FamilyContext;
-import com.familyos.common.error.BusinessException;
-import com.familyos.common.error.ErrorCode;
 import com.familyos.common.error.NotFoundException;
+import com.familyos.common.error.UnauthorizedException;
 import com.familyos.common.security.JwtProperties;
 import com.familyos.common.security.JwtProvider;
 import com.familyos.person.entity.Family;
@@ -100,9 +99,9 @@ public class AuthService {
     }
 
     /**
-     * 토큰 회전. reuse 감지 시 계정 전체 폐기를 커밋해야 하므로 BusinessException 에 대해 롤백하지 않는다.
+     * 토큰 회전. reuse 감지 시 계정 전체 폐기를 커밋해야 하므로 UnauthorizedException 에 대해 롤백하지 않는다.
      */
-    @Transactional(noRollbackFor = BusinessException.class)
+    @Transactional(noRollbackFor = UnauthorizedException.class)
     public TokenResponse refresh(String refreshTokenValue) {
         Claims claims;
         try {
@@ -200,7 +199,7 @@ public class AuthService {
                 tokens.accessToken(), tokens.refreshToken(), "Bearer", tokens.expiresInSeconds());
     }
 
-    private BusinessException unauthenticated(String message) {
-        return new BusinessException(ErrorCode.UNAUTHENTICATED, message);
+    private UnauthorizedException unauthenticated(String message) {
+        return new UnauthorizedException(message);
     }
 }

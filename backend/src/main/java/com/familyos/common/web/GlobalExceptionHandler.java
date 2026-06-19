@@ -3,6 +3,7 @@ package com.familyos.common.web;
 import com.familyos.common.error.BusinessException;
 import com.familyos.common.error.ErrorCode;
 import com.familyos.common.error.NotFoundException;
+import com.familyos.common.error.UnauthorizedException;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,6 +40,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleNotFound(NotFoundException e) {
         return build(ErrorCode.NOT_FOUND, e.getMessage(), null);
+    }
+
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleUnauthorized(UnauthorizedException e) {
+        return build(ErrorCode.UNAUTHENTICATED, e.getMessage(), null);
     }
 
     @ExceptionHandler(BusinessException.class)
