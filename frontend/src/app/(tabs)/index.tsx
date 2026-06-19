@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { endOfMonth, format, startOfMonth } from 'date-fns';
 
 import { useTimeline } from '@/api/timeline';
@@ -45,6 +47,7 @@ function DayBlock({ day }: { day: TimelineDay }) {
 }
 
 export default function TimelineScreen() {
+  const router = useRouter();
   const range = useMemo(() => {
     const now = new Date();
     return {
@@ -89,6 +92,9 @@ export default function TimelineScreen() {
           <Text style={styles.emptyText}>이번 달 기록이 아직 없어요.{'\n'}가계부·일정·기록을 추가해 보세요.</Text>
         }
       />
+      <Pressable style={styles.fab} onPress={() => router.push('/transaction/new')}>
+        <Ionicons name="add" size={28} color="#fff" />
+      </Pressable>
     </SafeAreaView>
   );
 }
@@ -108,4 +114,16 @@ const styles = StyleSheet.create({
   badgeText: { color: '#fff', fontSize: 11, fontWeight: '600' },
   itemTitle: { flex: 1, fontSize: 15, color: '#202124' },
   itemAmount: { fontSize: 14, fontWeight: '600', color: '#1a73e8' },
+  fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#1a73e8',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 4,
+  },
 });
