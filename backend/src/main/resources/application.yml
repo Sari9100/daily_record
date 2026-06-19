@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: family-os
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:family_os}?serverTimezone=UTC&characterEncoding=UTF-8
+    username: ${DB_USER:family_os}
+    password: ${DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate          # 스키마 진실은 Flyway. JPA는 검증만
+    properties:
+      hibernate:
+        format_sql: false
+        jdbc:
+          time_zone: UTC          # Instant → UTC 저장 보장
+    open-in-view: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: false
+
+# MyBatis: family_id/deleted_at 는 매퍼 WHERE 에 직접 명시 (자동필터 미적용)
+mybatis:
+  mapper-locations: classpath:mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+
+# JWT — 시크릿은 반드시 환경변수로 외부화 (하드코딩·커밋 금지)
+jwt:
+  access-secret: ${JWT_ACCESS_SECRET}     # HS256: 최소 32바이트 이상
+  refresh-secret: ${JWT_REFRESH_SECRET}
+  access-ttl: PT30M                        # 30분
+  refresh-ttl: P14D                        # 14일
+
+# CORS 허용 오리진 (웹). 앱은 네이티브라 CORS 무관
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:8081,http://localhost:19006}
