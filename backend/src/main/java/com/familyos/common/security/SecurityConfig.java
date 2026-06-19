@@ -1,9 +1,12 @@
 package com.familyos.common.security;
 
+import com.familyos.integration.telegram.HermesProperties;
+import com.familyos.integration.telegram.security.HermesServiceTokenFilter;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import tools.jackson.databind.ObjectMapper;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -32,18 +35,24 @@ import java.util.List;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-@EnableConfigurationProperties(JwtProperties.class)
+@EnableConfigurationProperties({JwtProperties.class, HermesProperties.class})
 public class SecurityConfig {
 
     private final RestAuthenticationEntryPoint authenticationEntryPoint;
     private final RestAccessDeniedHandler accessDeniedHandler;
+    private final HermesProperties hermesProperties;
+    private final ObjectMapper objectMapper;
     private final List<String> allowedOrigins;
 
     public SecurityConfig(RestAuthenticationEntryPoint authenticationEntryPoint,
                           RestAccessDeniedHandler accessDeniedHandler,
+                          HermesProperties hermesProperties,
+                          ObjectMapper objectMapper,
                           @org.springframework.beans.factory.annotation.Value("${app.cors.allowed-origins}") List<String> allowedOrigins) {
         this.authenticationEntryPoint = authenticationEntryPoint;
         this.accessDeniedHandler = accessDeniedHandler;
+        this.hermesProperties = hermesProperties;
+        this.objectMapper = objectMapper;
         this.allowedOrigins = allowedOrigins;
     }
 
@@ -61,8 +70,13 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health").permitAll()
                         // 사진 raw 서빙: 서명(HMAC)+만료가 곧 권한(capability URL) → 헤더 인증 면제
                         .requestMatchers(HttpMethod.GET, "/api/v1/photos/*/raw").permitAll()
+                        // Hermes 내부 API: JWT 면제 + HermesServiceTokenFilter 가 서비스 토큰 검증
+                        .requestMatchers("/api/v1/integrations/telegram/**").permitAll()
                         // 구글 webhook 등 공개 콜백은 추후 별도 permitAll + 채널토큰 검증으로 추가
                         .anyRequest().authenticated())
+                // 서비스 토큰 검증을 JWT 필터보다 먼저 (텔레그램 경로만 관여)
+                .addFilterBefore(new HermesServiceTokenFilter(hermesProperties.serviceToken(), objectMapper),
+                        UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(new JwtAuthenticationFilter(jwtProvider),
                         UsernamePasswordAuthenticationFilter.class)
                 .exceptionHandling(e -> e

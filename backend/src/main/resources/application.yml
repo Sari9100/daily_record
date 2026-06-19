@@ -20,6 +20,10 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: false
 
+# Hermes(텔레그램 봇) 내부 API 서비스 토큰 — 비어있으면 텔레그램 내부 API 전면 차단(fail-closed)
+hermes:
+  service-token: ${HERMES_SERVICE_TOKEN:}
+
 # MyBatis: family_id/deleted_at 는 매퍼 WHERE 에 직접 명시 (자동필터 미적용)
 mybatis:
   mapper-locations: classpath:mapper/**/*.xml
