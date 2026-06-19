@@ -8,6 +8,7 @@ import com.familyos.common.error.BusinessException;
 import com.familyos.common.error.NotFoundException;
 import com.familyos.common.security.VisibilityGuard;
 import com.familyos.common.web.PageResponse;
+import com.familyos.collection.repository.CollectionRepository;
 import com.familyos.ledger.dto.TransactionRequest;
 import com.familyos.ledger.dto.TransactionResponse;
 import com.familyos.ledger.entity.Account;
@@ -48,6 +49,7 @@ public class TransactionService {
     private final TransactionRepository transactionRepository;
     private final AccountRepository accountRepository;
     private final CategoryRepository categoryRepository;
+    private final CollectionRepository collectionRepository;
     private final FamilyMembershipRepository membershipRepository;
     private final VisibilityGuard visibilityGuard;
     private final SoftDeleteSupport softDeleteSupport;
@@ -55,12 +57,14 @@ public class TransactionService {
     public TransactionService(TransactionRepository transactionRepository,
                               AccountRepository accountRepository,
                               CategoryRepository categoryRepository,
+                              CollectionRepository collectionRepository,
                               FamilyMembershipRepository membershipRepository,
                               VisibilityGuard visibilityGuard,
                               SoftDeleteSupport softDeleteSupport) {
         this.transactionRepository = transactionRepository;
         this.accountRepository = accountRepository;
         this.categoryRepository = categoryRepository;
+        this.collectionRepository = collectionRepository;
         this.membershipRepository = membershipRepository;
         this.visibilityGuard = visibilityGuard;
         this.softDeleteSupport = softDeleteSupport;
@@ -103,7 +107,7 @@ public class TransactionService {
         Transaction tx = transactionRepository.save(new Transaction(
                 familyId, req.transactionType(), req.amount(), currency,
                 req.sourceAccountId(), req.targetAccountId(), req.categoryId(), req.subjectPersonId(),
-                req.visibility(), settlement, req.occurredAt(), req.memo(), source));
+                req.visibility(), settlement, req.occurredAt(), req.memo(), req.collectionId(), source));
 
         return toResponse(tx, user,
                 loadAccounts(familyId, List.of(tx)), loadCategories(familyId, List.of(tx)));
@@ -129,7 +133,7 @@ public class TransactionService {
 
         tx.update(req.transactionType(), req.amount(), currency,
                 req.sourceAccountId(), req.targetAccountId(), req.categoryId(), req.subjectPersonId(),
-                req.visibility(), settlement, req.occurredAt(), req.memo());
+                req.visibility(), settlement, req.occurredAt(), req.memo(), req.collectionId());
 
         return toResponse(tx, user,
                 loadAccounts(familyId, List.of(tx)), loadCategories(familyId, List.of(tx)));
@@ -201,6 +205,11 @@ public class TransactionService {
         if (req.subjectPersonId() != null
                 && !membershipRepository.existsByFamily_IdAndPerson_Id(familyId, req.subjectPersonId())) {
             throw new BusinessException("대상 인물이 현재 가족의 구성원(유효)이 아닙니다.");
+        }
+
+        if (req.collectionId() != null
+                && collectionRepository.findByIdAndFamilyId(req.collectionId(), familyId).isEmpty()) {
+            throw new BusinessException("묶음(collection)이 존재하지 않거나 삭제되었습니다.");
         }
     }
 

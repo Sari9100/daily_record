@@ -14,7 +14,7 @@ import java.time.Instant;
  * 거래 생성/수정 요청.
  *
  * <p>서버 결정 값(family_id, settlement_status)은 받지 않는다. visibility 는 PRIVATE/PARENTS/FAMILY 만(서비스 검증).
- * collectionId·tagIds 는 collection/tag 도메인 구현 시 추가(현재 미지원 — alive 검증 불가한 참조를 받지 않음).
+ * collectionId 는 alive 검증 후 연결. tagIds 는 tag 도메인 구현 시 추가(현재 미지원).
  */
 public record TransactionRequest(
         @NotNull TransactionType transactionType,
@@ -27,6 +27,7 @@ public record TransactionRequest(
         @NotNull Visibility visibility,
         @NotNull Instant occurredAt,
         @Nullable String memo,
+        @Nullable Long collectionId,
         @Nullable TransactionSource source
 ) {
 }

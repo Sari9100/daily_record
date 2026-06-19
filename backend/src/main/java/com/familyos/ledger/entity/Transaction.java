@@ -74,7 +74,8 @@ public class Transaction extends FamilyScopedEntity implements Visible {
                        @Nullable Long sourceAccountId, @Nullable Long targetAccountId,
                        @Nullable Long categoryId, @Nullable Long subjectPersonId,
                        Visibility visibility, SettlementStatus settlementStatus,
-                       Instant occurredAt, @Nullable String memo, TransactionSource source) {
+                       Instant occurredAt, @Nullable String memo, @Nullable Long collectionId,
+                       TransactionSource source) {
         setFamilyId(familyId);
         this.transactionType = transactionType;
         this.amount = amount;
@@ -87,6 +88,7 @@ public class Transaction extends FamilyScopedEntity implements Visible {
         this.settlementStatus = settlementStatus;
         this.occurredAt = occurredAt;
         this.memo = memo;
+        this.collectionId = collectionId;
         this.source = source;
     }
 
@@ -153,7 +155,7 @@ public class Transaction extends FamilyScopedEntity implements Visible {
                        @Nullable Long sourceAccountId, @Nullable Long targetAccountId,
                        @Nullable Long categoryId, @Nullable Long subjectPersonId,
                        Visibility visibility, SettlementStatus settlementStatus,
-                       Instant occurredAt, @Nullable String memo) {
+                       Instant occurredAt, @Nullable String memo, @Nullable Long collectionId) {
         this.transactionType = transactionType;
         this.amount = amount;
         this.currency = currency;
@@ -165,5 +167,6 @@ public class Transaction extends FamilyScopedEntity implements Visible {
         this.settlementStatus = settlementStatus;
         this.occurredAt = occurredAt;
         this.memo = memo;
+        this.collectionId = collectionId;
     }
 }

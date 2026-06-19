@@ -1,0 +1,182 @@
+package com.familyos.schedule.entity;
+
+import com.familyos.common.domain.Visibility;
+import com.familyos.common.entity.FamilyScopedEntity;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Table;
+import org.jspecify.annotations.Nullable;
+
+import java.time.Instant;
+import java.time.LocalDate;
+
+/**
+ * 일정.
+ *
+ * <p><b>시각/날짜 이원화</b>(1-6): is_all_day=true → start_date/end_date 만(started_at/ended_at NULL),
+ * is_all_day=false → started_at/ended_at(UTC) 만(start_date/end_date NULL). 서비스에서 강제.
+ *
+ * <p><b>google 동기화 필드</b>(googleEventId/syncStatus/lastSyncedAt)는 서버·동기화 모듈만 설정한다.
+ * 클라 요청으로 변경하지 않는다(별도 setter, 일반 update 에서 제외).
+ */
+@Entity
+@Table(name = "schedule")
+public class Schedule extends FamilyScopedEntity {
+
+    @Column(name = "title", nullable = false)
+    private String title;
+
+    @Column(name = "description", columnDefinition = "TEXT")
+    private @Nullable String description;
+
+    @Column(name = "location")
+    private @Nullable String location;
+
+    @Column(name = "started_at")
+    private @Nullable Instant startedAt;
+
+    @Column(name = "ended_at")
+    private @Nullable Instant endedAt;
+
+    @Column(name = "start_date")
+    private @Nullable LocalDate startDate;
+
+    @Column(name = "end_date")
+    private @Nullable LocalDate endDate;
+
+    @Column(name = "is_all_day", nullable = false)
+    private boolean allDay;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "visibility", nullable = false)
+    private Visibility visibility;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "schedule_type", nullable = false)
+    private ScheduleType scheduleType;
+
+    @Column(name = "is_done", nullable = false)
+    private boolean done;
+
+    @Column(name = "recurrence_rule")
+    private @Nullable String recurrenceRule;
+
+    @Column(name = "collection_id")
+    private @Nullable Long collectionId;
+
+    @Column(name = "google_event_id")
+    private @Nullable String googleEventId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "sync_status")
+    private @Nullable SyncStatus syncStatus;
+
+    @Column(name = "last_synced_at")
+    private @Nullable Instant lastSyncedAt;
+
+    protected Schedule() {
+    }
+
+    public Schedule(Long familyId, String title, @Nullable String description, @Nullable String location,
+                    @Nullable Instant startedAt, @Nullable Instant endedAt,
+                    @Nullable LocalDate startDate, @Nullable LocalDate endDate, boolean allDay,
+                    Visibility visibility, ScheduleType scheduleType, @Nullable String recurrenceRule,
+                    @Nullable Long collectionId) {
+        setFamilyId(familyId);
+        this.title = title;
+        this.description = description;
+        this.location = location;
+        this.startedAt = startedAt;
+        this.endedAt = endedAt;
+        this.startDate = startDate;
+        this.endDate = endDate;
+        this.allDay = allDay;
+        this.visibility = visibility;
+        this.scheduleType = scheduleType;
+        this.done = false;
+        this.recurrenceRule = recurrenceRule;
+        this.collectionId = collectionId;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public @Nullable String getDescription() {
+        return description;
+    }
+
+    public @Nullable String getLocation() {
+        return location;
+    }
+
+    public @Nullable Instant getStartedAt() {
+        return startedAt;
+    }
+
+    public @Nullable Instant getEndedAt() {
+        return endedAt;
+    }
+
+    public @Nullable LocalDate getStartDate() {
+        return startDate;
+    }
+
+    public @Nullable LocalDate getEndDate() {
+        return endDate;
+    }
+
+    public boolean isAllDay() {
+        return allDay;
+    }
+
+    public Visibility getVisibility() {
+        return visibility;
+    }
+
+    public ScheduleType getScheduleType() {
+        return scheduleType;
+    }
+
+    public boolean isDone() {
+        return done;
+    }
+
+    public @Nullable String getRecurrenceRule() {
+        return recurrenceRule;
+    }
+
+    public @Nullable Long getCollectionId() {
+        return collectionId;
+    }
+
+    public @Nullable SyncStatus getSyncStatus() {
+        return syncStatus;
+    }
+
+    /** 클라 수정 가능한 필드만 갱신. google 동기화 필드는 제외(서버·동기화 모듈 전용). */
+    public void update(String title, @Nullable String description, @Nullable String location,
+                       @Nullable Instant startedAt, @Nullable Instant endedAt,
+                       @Nullable LocalDate startDate, @Nullable LocalDate endDate, boolean allDay,
+                       Visibility visibility, ScheduleType scheduleType, @Nullable String recurrenceRule,
+                       @Nullable Long collectionId) {
+        this.title = title;
+        this.description = description;
+        this.location = location;
+        this.startedAt = startedAt;
+        this.endedAt = endedAt;
+        this.startDate = startDate;
+        this.endDate = endDate;
+        this.allDay = allDay;
+        this.visibility = visibility;
+        this.scheduleType = scheduleType;
+        this.recurrenceRule = recurrenceRule;
+        this.collectionId = collectionId;
+    }
+
+    public void toggleDone() {
+        this.done = !this.done;
+    }
+}

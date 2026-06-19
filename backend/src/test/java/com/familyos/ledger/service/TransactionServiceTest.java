@@ -51,6 +51,7 @@ class TransactionServiceTest {
     @Mock TransactionRepository transactionRepository;
     @Mock AccountRepository accountRepository;
     @Mock CategoryRepository categoryRepository;
+    @Mock com.familyos.collection.repository.CollectionRepository collectionRepository;
     @Mock FamilyMembershipRepository membershipRepository;
     @Mock VisibilityGuard visibilityGuard;
     @Mock com.familyos.common.audit.SoftDeleteSupport softDeleteSupport;
@@ -60,7 +61,7 @@ class TransactionServiceTest {
     @BeforeEach
     void setUp() {
         service = new TransactionService(transactionRepository, accountRepository, categoryRepository,
-                membershipRepository, visibilityGuard, softDeleteSupport);
+                collectionRepository, membershipRepository, visibilityGuard, softDeleteSupport);
         FamilyContext.set(new AuthUser(1L, 10L, FAMILY_ID, FamilyRole.PARENT));
     }
 
@@ -72,7 +73,7 @@ class TransactionServiceTest {
     private TransactionRequest req(TransactionType type, Visibility vis,
                                    Long source, Long target, Long categoryId) {
         return new TransactionRequest(type, new BigDecimal("50000"), "KRW",
-                source, target, categoryId, null, vis, Instant.parse("2026-06-19T08:30:00Z"), "메모", null);
+                source, target, categoryId, null, vis, Instant.parse("2026-06-19T08:30:00Z"), "메모", null, null);
     }
 
     @Test
