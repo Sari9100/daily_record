@@ -2,7 +2,9 @@ package com.familyos.integration.google.controller;
 
 import com.familyos.common.web.ApiResponse;
 import com.familyos.integration.google.dto.GoogleConnectResponse;
+import com.familyos.integration.google.dto.GoogleSyncResult;
 import com.familyos.integration.google.service.GoogleConnectService;
+import com.familyos.integration.google.service.GoogleSyncService;
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -25,14 +27,22 @@ import org.springframework.web.bind.annotation.RestController;
 public class GoogleController {
 
     private final GoogleConnectService connectService;
+    private final GoogleSyncService syncService;
 
-    public GoogleController(GoogleConnectService connectService) {
+    public GoogleController(GoogleConnectService connectService, GoogleSyncService syncService) {
         this.connectService = connectService;
+        this.syncService = syncService;
     }
 
     @PostMapping("/connect")
     public ApiResponse<GoogleConnectResponse> connect() {
         return ApiResponse.ok(new GoogleConnectResponse(connectService.connect()));
+    }
+
+    /** 수동 동기화 트리거(구글→우리). 최초엔 전체, 이후 증분(syncToken). */
+    @PostMapping("/sync")
+    public ApiResponse<GoogleSyncResult> sync() {
+        return ApiResponse.ok(syncService.syncForCurrentUser());
     }
 
     /** 브라우저 리디렉션 대상 — 사람이 보는 화면이라 간단한 텍스트로 응답(프론트 연동 시 리디렉션으로 교체). */

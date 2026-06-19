@@ -17,6 +17,9 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Long> {
 
     Optional<Schedule> findByIdAndFamilyId(Long id, Long familyId);
 
+    /** 구글 동기화 upsert 용 — google_event_id 로 기존 일정 매칭. */
+    Optional<Schedule> findByGoogleEventIdAndFamilyId(String googleEventId, Long familyId);
+
     /**
      * 권한 범위 내 일정 목록 — visibility 를 DB WHERE 에서 필터.
      * SHARED_PERSONAL 은 작성자 또는 subject 지정자에게만(EXISTS 서브쿼리).

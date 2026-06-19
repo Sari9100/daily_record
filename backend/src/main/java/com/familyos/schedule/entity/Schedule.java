@@ -179,4 +179,31 @@ public class Schedule extends FamilyScopedEntity {
     public void toggleDone() {
         this.done = !this.done;
     }
+
+    // ---- 구글 동기화 (서버·동기화 모듈 전용) ----
+
+    /**
+     * 구글 이벤트로부터 동기화된 필드만 갱신. visibility/scheduleType/collection 은 우리 고유 개념이라 보존
+     * (사용자가 우리 앱에서 설정한 값을 동기화가 덮지 않는다).
+     */
+    public void applyGoogleEvent(String title, @Nullable String description, @Nullable String location,
+                                 @Nullable Instant startedAt, @Nullable Instant endedAt,
+                                 @Nullable LocalDate startDate, @Nullable LocalDate endDate,
+                                 boolean allDay, @Nullable String recurrenceRule) {
+        this.title = title;
+        this.description = description;
+        this.location = location;
+        this.startedAt = startedAt;
+        this.endedAt = endedAt;
+        this.startDate = startDate;
+        this.endDate = endDate;
+        this.allDay = allDay;
+        this.recurrenceRule = recurrenceRule;
+    }
+
+    public void markGoogleSynced(String googleEventId, Instant lastSyncedAt) {
+        this.googleEventId = googleEventId;
+        this.syncStatus = SyncStatus.SYNCED;
+        this.lastSyncedAt = lastSyncedAt;
+    }
 }
