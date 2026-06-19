@@ -68,6 +68,9 @@ function AuthGate() {
         name="diary/[id]"
         options={{ presentation: 'modal', headerShown: true, title: '기록 편집' }}
       />
+      <Stack.Screen name="family" options={{ headerShown: true, title: '가족·구성원' }} />
+      <Stack.Screen name="integrations" options={{ headerShown: true, title: '외부연동' }} />
+      <Stack.Screen name="settings" options={{ headerShown: true, title: '개인 설정' }} />
     </Stack>
   );
 }

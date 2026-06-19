@@ -1,11 +1,14 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 import { useAuthStore } from '@/store/auth';
 import { signOut } from '@/api/session';
 
 export default function MoreScreen() {
   const me = useAuthStore((s) => s.me);
+  const router = useRouter();
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
@@ -18,10 +21,10 @@ export default function MoreScreen() {
       </View>
 
       <View style={styles.menu}>
+        <MenuLink label="가족·구성원" onPress={() => router.push('/family')} />
+        <MenuLink label="외부연동 (구글 캘린더)" onPress={() => router.push('/integrations')} />
+        <MenuLink label="개인 설정" onPress={() => router.push('/settings')} />
         <Text style={styles.menuItemDisabled}>이벤트 묶음 (다음 단계)</Text>
-        <Text style={styles.menuItemDisabled}>가족·구성원 (다음 단계)</Text>
-        <Text style={styles.menuItemDisabled}>외부연동(구글 캘린더) (다음 단계)</Text>
-        <Text style={styles.menuItemDisabled}>개인 설정 (다음 단계)</Text>
       </View>
 
       <Pressable style={styles.logout} onPress={() => signOut()}>
@@ -31,13 +34,31 @@ export default function MoreScreen() {
   );
 }
 
+function MenuLink({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <Pressable style={styles.menuItem} onPress={onPress}>
+      <Text style={styles.menuItemText}>{label}</Text>
+      <Ionicons name="chevron-forward" size={18} color="#9aa0a6" />
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#fff', padding: 20, gap: 24 },
   section: { gap: 4, paddingVertical: 8 },
   name: { fontSize: 22, fontWeight: '700', color: '#202124' },
   sub: { fontSize: 14, color: '#5f6368' },
-  menu: { gap: 16 },
-  menuItemDisabled: { fontSize: 16, color: '#9aa0a6' },
+  menu: { gap: 4 },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f3f4',
+  },
+  menuItemText: { fontSize: 16, color: '#202124' },
+  menuItemDisabled: { fontSize: 16, color: '#9aa0a6', paddingVertical: 14 },
   logout: { marginTop: 'auto', borderWidth: 1, borderColor: '#d93025', borderRadius: 10, paddingVertical: 14, alignItems: 'center' },
   logoutText: { color: '#d93025', fontSize: 16, fontWeight: '600' },
 });
