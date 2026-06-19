@@ -51,11 +51,10 @@ dependencies {
     testImplementation 'org.springframework.security:spring-security-test'
 
     // --- 통합테스트(Testcontainers, Docker 필요) ---
-    // testcontainers 개별 모듈은 Boot BOM 미관리 → testcontainers-bom 직접 import
-    testImplementation platform('org.testcontainers:testcontainers-bom:2.0.5')
+    // Testcontainers 2.0: 아티팩트명이 testcontainers-<module> 로 변경(버전은 Boot BOM=2.0.5 관리)
     testImplementation 'org.springframework.boot:spring-boot-testcontainers'
-    testImplementation 'org.testcontainers:junit-jupiter'
-    testImplementation 'org.testcontainers:mysql'
+    testImplementation 'org.testcontainers:testcontainers-junit-jupiter'
+    testImplementation 'org.testcontainers:testcontainers-mysql'
 }
 
 // 기본 test: 단위테스트만 (integration 태그 제외 → Docker 없는 개발 PC 에서 그린 유지)
