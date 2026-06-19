@@ -27,10 +27,10 @@ function accountText(t: Transaction): string {
   return `${t.sourceAccount?.name ?? mask} → ${t.targetAccount?.name ?? mask}`;
 }
 
-function Row({ t }: { t: Transaction }) {
+function Row({ t, onPress }: { t: Transaction; onPress: () => void }) {
   const title = t.category?.name ?? t.memo ?? '(미분류)';
   return (
-    <View style={styles.row}>
+    <Pressable style={styles.row} onPress={onPress}>
       <View style={styles.rowLeft}>
         <Text style={styles.rowTitle} numberOfLines={1}>
           {title}
@@ -44,7 +44,7 @@ function Row({ t }: { t: Transaction }) {
         <Text style={[styles.amount, { color: amountColor(t.transactionType) }]}>{amountText(t)}</Text>
         <Text style={styles.time}>{format(parseISO(t.occurredAt), 'M/d HH:mm')}</Text>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -57,6 +57,14 @@ export default function LedgerScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>가계부</Text>
+        <View style={styles.headerLinks}>
+          <Pressable onPress={() => router.push('/accounts')} hitSlop={8}>
+            <Text style={styles.headerLink}>계좌</Text>
+          </Pressable>
+          <Pressable onPress={() => router.push('/categories')} hitSlop={8}>
+            <Text style={styles.headerLink}>카테고리</Text>
+          </Pressable>
+        </View>
       </View>
 
       {isLoading ? (
@@ -74,7 +82,12 @@ export default function LedgerScreen() {
         <FlatList
           data={data?.content ?? []}
           keyExtractor={(t) => String(t.id)}
-          renderItem={({ item }) => <Row t={item} />}
+          renderItem={({ item }) => (
+            <Row
+              t={item}
+              onPress={() => router.push({ pathname: '/transaction/[id]', params: { id: item.id } })}
+            />
+          )}
           ItemSeparatorComponent={() => <View style={styles.sep} />}
           contentContainerStyle={(data?.content.length ?? 0) === 0 ? styles.emptyBox : styles.list}
           onRefresh={refetch}
@@ -94,8 +107,16 @@ export default function LedgerScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#fff' },
-  header: { paddingHorizontal: 16, paddingVertical: 12 },
+  header: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   headerTitle: { fontSize: 22, fontWeight: '700', color: '#202124' },
+  headerLinks: { flexDirection: 'row', gap: 16 },
+  headerLink: { fontSize: 15, color: '#1a73e8', fontWeight: '600' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   errorText: { textAlign: 'center', color: '#d93025', fontSize: 14, lineHeight: 20 },
   list: { paddingHorizontal: 16, paddingBottom: 96 },

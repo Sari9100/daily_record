@@ -45,6 +45,12 @@ function AuthGate() {
         name="transaction/new"
         options={{ presentation: 'modal', headerShown: true, title: '거래 입력' }}
       />
+      <Stack.Screen
+        name="transaction/[id]"
+        options={{ presentation: 'modal', headerShown: true, title: '거래 편집' }}
+      />
+      <Stack.Screen name="accounts" options={{ headerShown: true, title: '계좌 관리' }} />
+      <Stack.Screen name="categories" options={{ headerShown: true, title: '카테고리 관리' }} />
     </Stack>
   );
 }

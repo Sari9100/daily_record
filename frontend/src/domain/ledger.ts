@@ -63,3 +63,31 @@ export const TRANSACTION_TYPE_LABEL: Record<TransactionType, string> = {
   INCOME: '수입',
   TRANSFER: '이체',
 };
+
+export type AssetType = 'BANK' | 'SECURITIES' | 'CASH';
+export type AccountOwnerType = 'PERSON' | 'FAMILY';
+
+export type AccountCreate = {
+  name: string;
+  assetType: AssetType;
+  ownerType: AccountOwnerType;
+  ownerPersonId?: number | null;
+  visibility: Visibility;
+};
+
+export type CategoryCreate = {
+  name: string;
+  type: CategoryType;
+  parentId?: number | null;
+};
+
+export const ASSET_TYPE_LABEL: Record<AssetType, string> = {
+  BANK: '은행',
+  SECURITIES: '증권',
+  CASH: '현금',
+};
+
+export const CATEGORY_TYPE_LABEL: Record<CategoryType, string> = {
+  EXPENSE: '지출',
+  INCOME: '수입',
+};
