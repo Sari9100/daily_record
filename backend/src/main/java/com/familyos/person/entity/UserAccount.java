@@ -21,7 +21,8 @@ import java.time.Instant;
 @Table(name = "user_account")
 public class UserAccount extends BaseEntity {
 
-    @OneToOne(fetch = FetchType.LAZY)
+    // Hibernate 7: @SoftDelete 대상(Person)을 가리키는 to-one 은 LAZY 불가 → EAGER
+    @OneToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "person_id", nullable = false, updatable = false)
     private Person person;
 

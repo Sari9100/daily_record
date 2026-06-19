@@ -20,11 +20,11 @@ import java.time.Instant;
 @Table(name = "family_membership")
 public class FamilyMembership extends BaseEntity {
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER) // Hibernate 7: @SoftDelete 대상은 to-one LAZY 불가
     @JoinColumn(name = "family_id", nullable = false, updatable = false)
     private Family family;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER) // Hibernate 7: @SoftDelete 대상은 to-one LAZY 불가
     @JoinColumn(name = "person_id", nullable = false, updatable = false)
     private Person person;
 
