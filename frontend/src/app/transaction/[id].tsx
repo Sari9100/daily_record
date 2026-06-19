@@ -35,6 +35,7 @@ export default function EditTransactionScreen() {
     visibility: t.visibility,
     memo: t.memo ?? '',
     occurredAt: t.occurredAt,
+    collectionId: t.collectionId,
   };
 
   return (

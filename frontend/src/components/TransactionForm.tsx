@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 
 import { ChipGroup, type ChipOption } from '@/components/ChipGroup';
+import { CollectionPicker } from '@/components/CollectionPicker';
 import { useAccounts, useCategories } from '@/api/ledger';
 import type { TransactionCreate, TransactionType } from '@/domain/ledger';
 import type { Visibility } from '@/domain/types';
@@ -37,6 +38,7 @@ export type TransactionInitial = {
   visibility?: Visibility;
   memo?: string;
   occurredAt?: string;
+  collectionId?: number | null;
 };
 
 export function TransactionForm({
@@ -61,6 +63,7 @@ export function TransactionForm({
   const [categoryId, setCategoryId] = useState<number | null>(initial?.categoryId ?? null);
   const [visibility, setVisibility] = useState<Visibility>(initial?.visibility ?? 'PRIVATE');
   const [memo, setMemo] = useState(initial?.memo ?? '');
+  const [collectionId, setCollectionId] = useState<number | null>(initial?.collectionId ?? null);
   const [formError, setFormError] = useState<string | null>(null);
   const [occurredAt] = useState(() => initial?.occurredAt ?? new Date().toISOString());
   // 유형이 사용자 조작으로 바뀌었는지 — 초기 prefill 시점엔 계좌/카테고리를 지우지 않도록 가드
@@ -112,6 +115,7 @@ export function TransactionForm({
         visibility,
         occurredAt,
         memo: memo.trim() ? memo.trim() : null,
+        collectionId,
       });
     } catch (e) {
       setFormError(e instanceof Error ? e.message : '저장에 실패했습니다.');
@@ -189,6 +193,10 @@ export function TransactionForm({
             placeholder="메모"
             placeholderTextColor="#9aa0a6"
           />
+        </Field>
+
+        <Field label="묶음 (선택)">
+          <CollectionPicker value={collectionId} onChange={setCollectionId} />
         </Field>
 
         {formError && <Text style={styles.error}>{formError}</Text>}

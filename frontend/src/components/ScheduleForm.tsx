@@ -14,6 +14,7 @@ import {
 import { format, parseISO } from 'date-fns';
 
 import { ChipGroup, type ChipOption } from '@/components/ChipGroup';
+import { CollectionPicker } from '@/components/CollectionPicker';
 import { useFamilyMembers } from '@/api/schedule';
 import type { Schedule, ScheduleCreate, ScheduleType } from '@/domain/schedule';
 import type { Visibility } from '@/domain/types';
@@ -71,6 +72,7 @@ export function ScheduleForm({
   const [subjects, setSubjects] = useState<Set<number>>(new Set(initial?.subjects ?? []));
   const [location, setLocation] = useState(initial?.location ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
+  const [collectionId, setCollectionId] = useState<number | null>(initial?.collectionId ?? null);
   const [error, setError] = useState<string | null>(null);
 
   const toggleSubject = (id: number) => {
@@ -91,6 +93,7 @@ export function ScheduleForm({
       allDay,
       visibility,
       scheduleType: type,
+      collectionId,
       subjectPersonIds: visibility === 'SHARED_PERSONAL' ? Array.from(subjects) : [],
       participantPersonIds: [],
     };
@@ -197,6 +200,10 @@ export function ScheduleForm({
 
         <Field label="메모 (선택)">
           <TextInput style={styles.input} value={description} onChangeText={setDescription} placeholder="메모" placeholderTextColor="#9aa0a6" />
+        </Field>
+
+        <Field label="묶음 (선택)">
+          <CollectionPicker value={collectionId} onChange={setCollectionId} />
         </Field>
 
         {error && <Text style={styles.error}>{error}</Text>}

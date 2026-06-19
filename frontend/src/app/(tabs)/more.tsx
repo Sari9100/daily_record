@@ -21,10 +21,10 @@ export default function MoreScreen() {
       </View>
 
       <View style={styles.menu}>
+        <MenuLink label="이벤트 묶음" onPress={() => router.push('/collections')} />
         <MenuLink label="가족·구성원" onPress={() => router.push('/family')} />
         <MenuLink label="외부연동 (구글 캘린더)" onPress={() => router.push('/integrations')} />
         <MenuLink label="개인 설정" onPress={() => router.push('/settings')} />
-        <Text style={styles.menuItemDisabled}>이벤트 묶음 (다음 단계)</Text>
       </View>
 
       <Pressable style={styles.logout} onPress={() => signOut()}>

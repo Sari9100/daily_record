@@ -13,6 +13,7 @@ import {
 import { format } from 'date-fns';
 
 import { ChipGroup, type ChipOption } from '@/components/ChipGroup';
+import { CollectionPicker } from '@/components/CollectionPicker';
 import { useFamilyMembers } from '@/api/schedule';
 import type { Diary, DiaryCreate } from '@/domain/diary';
 import type { Visibility } from '@/domain/types';
@@ -48,6 +49,7 @@ export function DiaryForm({
   const [recordedOn, setRecordedOn] = useState(initial?.recordedOn ?? format(new Date(), 'yyyy-MM-dd'));
   const [visibility, setVisibility] = useState<Visibility>(initial?.visibility ?? 'PRIVATE');
   const [subjects, setSubjects] = useState<Set<number>>(new Set(initial?.subjects ?? []));
+  const [collectionId, setCollectionId] = useState<number | null>(initial?.collectionId ?? null);
   const [error, setError] = useState<string | null>(null);
 
   const toggleSubject = (id: number) =>
@@ -74,6 +76,7 @@ export function DiaryForm({
         content: content.trim(),
         visibility,
         recordedOn,
+        collectionId,
         subjectPersonIds: visibility === 'SHARED_PERSONAL' ? Array.from(subjects) : [],
       });
     } catch (e) {
@@ -121,6 +124,10 @@ export function DiaryForm({
             </View>
           </Field>
         )}
+
+        <Field label="묶음 (선택)">
+          <CollectionPicker value={collectionId} onChange={setCollectionId} />
+        </Field>
 
         {error && <Text style={styles.error}>{error}</Text>}
 
