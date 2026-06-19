@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+  통합 타임라인 — transaction/schedule/diary/photo 를 날짜축으로 병합.
+  ★ 모든 서브쿼리 WHERE 에 family_id = #{familyId} 와 deleted_at IS NULL 직접 명시 (Hibernate 필터 미적용).
+  ★ 도메인별 visibility 권한 조건을 WHERE 에 적용.
+  날짜 그룹 키: 일정=start_date 또는 started_at 로컬날짜 / 기록=recorded_on / 거래=occurred_at 로컬날짜 / 사진=taken_at 로컬날짜.
+  정렬: 그룹(날짜) 내에서 시각 없는 항목(종일/DATE) 맨 위(type 우선순위 일정→기록→거래→사진), 그 아래 시각순.
+  type_priority: SCHEDULE=1, DIARY=2, TRANSACTION=3, PHOTO=4.
+-->
+<mapper namespace="com.familyos.timeline.mapper.TimelineMapper">
+
+    <select id="timeline" resultType="com.familyos.timeline.dto.TimelineRow">
+        select
+            tl.type        as type,
+            tl.id          as id,
+            tl.group_date  as groupDate,
+            tl.sort_instant as sortInstant,
+            tl.title       as title,
+            tl.amount      as amount
+        from (
+            <!-- ===== 일정 (visibility 4단계, SHARED_PERSONAL=작성자 또는 subject) ===== -->
+            select
+                'SCHEDULE' as type,
+                s.id as id,
+                case when s.is_all_day = 1 then s.start_date
+                     else date(convert_tz(s.started_at, '+00:00', #{zoneOffset})) end as group_date,
+                case when s.is_all_day = 1 then null else s.started_at end as sort_instant,
+                1 as type_priority,
+                s.title as title,
+                null as amount
+            from schedule s
+            where s.family_id = #{familyId}
+              and s.deleted_at is null
+              and (s.visibility = 'FAMILY'
+                   or (s.visibility = 'PARENTS' and #{isParent} = true)
+                   or (s.visibility = 'PRIVATE' and s.created_by = #{personId})
+                   or (s.visibility = 'SHARED_PERSONAL'
+                       and (s.created_by = #{personId}
+                            or exists (select 1 from schedule_subject ss
+                                       where ss.schedule_id = s.id
+                                         and ss.family_id = #{familyId}
+                                         and ss.deleted_at is null
+                                         and ss.person_id = #{personId}))))
+
+            union all
+
+            <!-- ===== 일상기록 (visibility 4단계) ===== -->
+            select
+                'DIARY' as type,
+                d.id as id,
+                d.recorded_on as group_date,
+                d.recorded_at as sort_instant,
+                2 as type_priority,
+                d.title as title,
+                null as amount
+            from diary d
+            where d.family_id = #{familyId}
+              and d.deleted_at is null
+              and (d.visibility = 'FAMILY'
+                   or (d.visibility = 'PARENTS' and #{isParent} = true)
+                   or (d.visibility = 'PRIVATE' and d.created_by = #{personId})
+                   or (d.visibility = 'SHARED_PERSONAL'
+                       and (d.created_by = #{personId}
+                            or exists (select 1 from diary_subject ds
+                                       where ds.diary_id = d.id
+                                         and ds.family_id = #{familyId}
+                                         and ds.deleted_at is null
+                                         and ds.person_id = #{personId}))))
+
+            union all
+
+            <!-- ===== 거래 (visibility PRIVATE/PARENTS/FAMILY) — TRANSFER 포함(피드) ===== -->
+            select
+                'TRANSACTION' as type,
+                t.id as id,
+                date(convert_tz(t.occurred_at, '+00:00', #{zoneOffset})) as group_date,
+                t.occurred_at as sort_instant,
+                3 as type_priority,
+                t.memo as title,
+                t.amount as amount
+            from `transaction` t
+            where t.family_id = #{familyId}
+              and t.deleted_at is null
+              and (t.visibility = 'FAMILY'
+                   or (t.visibility = 'PARENTS' and #{isParent} = true)
+                   or (t.visibility = 'PRIVATE' and t.created_by = #{personId}))
+
+            union all
+
+            <!-- ===== 사진 (권한은 연결 diary 의 visibility, standalone 은 작성자). taken_at 있어야 날짜축 배치 ===== -->
+            select
+                'PHOTO' as type,
+                p.id as id,
+                date(convert_tz(p.taken_at, '+00:00', #{zoneOffset})) as group_date,
+                p.taken_at as sort_instant,
+                4 as type_priority,
+                null as title,
+                null as amount
+            from photo p
+            left join diary d on d.id = p.diary_id and d.deleted_at is null
+            where p.family_id = #{familyId}
+              and p.deleted_at is null
+              and p.taken_at is not null
+              and (
+                    (p.diary_id is not null
+                     and (d.visibility = 'FAMILY'
+                          or (d.visibility = 'PARENTS' and #{isParent} = true)
+                          or (d.visibility = 'PRIVATE' and d.created_by = #{personId})
+                          or (d.visibility = 'SHARED_PERSONAL'
+                              and (d.created_by = #{personId}
+                                   or exists (select 1 from diary_subject ds
+                                              where ds.diary_id = d.id
+                                                and ds.family_id = #{familyId}
+                                                and ds.deleted_at is null
+                                                and ds.person_id = #{personId})))))
+                    or (p.diary_id is null and p.created_by = #{personId})
+                  )
+        ) tl
+        where tl.group_date between #{fromDate} and #{toDate}
+        order by
+            tl.group_date asc,
+            (tl.sort_instant is not null) asc,   <!-- 시각 없는 항목(종일/DATE) 먼저 -->
+            tl.sort_instant asc,
+            tl.type_priority asc
+    </select>
+
+</mapper>
