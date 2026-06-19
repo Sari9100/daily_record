@@ -1,7 +1,6 @@
 plugins {
     id 'java'
     id 'org.springframework.boot' version '4.1.0'
-    id 'io.spring.dependency-management' version '1.1.7'
 }
 
 group = 'com.familyos'
@@ -18,18 +17,22 @@ repositories {
 }
 
 dependencies {
+    // Spring Boot BOM — Gradle 네이티브 platform() 으로 직접 import (Boot 4 권장 방식)
+    implementation platform('org.springframework.boot:spring-boot-dependencies:4.1.0')
+
     // --- Web / Security / JPA ---
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
-    implementation 'org.springframework.boot:spring-boot-starter-aop'
+    // Boot 4 에서 spring-boot-starter-aop → spring-boot-starter-aspectj 로 개명 (FamilyFilterAspect 의 @Aspect 용)
+    implementation 'org.springframework.boot:spring-boot-starter-aspectj'
 
     // --- MyBatis (타임라인·통계·검색) ---
-    // 4.0.x = Spring Boot 4.0 / MyBatis-Spring 4.0 / Java 17+ 지원 (3.0.x는 Boot 3 타깃)
+    // 4.0.x = Spring Boot 4.0/4.1 / MyBatis-Spring 4.0 / Java 17+ 지원
     implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:4.0.1'
 
-    // --- Migration / DB ---
+    // --- Migration / DB (버전은 Boot BOM 관리) ---
     implementation 'org.flywaydb:flyway-core'
     implementation 'org.flywaydb:flyway-mysql'
     runtimeOnly 'com.mysql:mysql-connector-j'
@@ -42,7 +45,7 @@ dependencies {
     // --- JSpecify null 안정성 (Spring Framework 7) ---
     implementation 'org.jspecify:jspecify:1.0.0'
 
-    // --- Test ---
+    // --- Test (버전은 Boot BOM 관리) ---
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
 }

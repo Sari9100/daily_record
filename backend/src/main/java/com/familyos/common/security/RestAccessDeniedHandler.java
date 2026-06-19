@@ -2,7 +2,7 @@ package com.familyos.common.security;
 
 import com.familyos.common.error.ErrorCode;
 import com.familyos.common.web.ApiResponse;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.MediaType;

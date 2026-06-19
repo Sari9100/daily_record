@@ -35,6 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -322,7 +323,7 @@ public class TransactionService {
             }
         }
         if (ids.isEmpty()) {
-            return Map.of();
+            return Collections.emptyMap(); // null-key getOrDefault 안전 (immutable Map.of() 는 NPE)
         }
         return accountRepository.findByIdInAndFamilyId(ids, familyId).stream()
                 .collect(Collectors.toMap(Account::getId, Function.identity()));
@@ -331,7 +332,7 @@ public class TransactionService {
     private Map<Long, Category> loadCategories(Long familyId, Collection<Transaction> txs) {
         List<Long> ids = txs.stream().map(Transaction::getCategoryId).filter(java.util.Objects::nonNull).toList();
         if (ids.isEmpty()) {
-            return Map.of();
+            return Collections.emptyMap(); // null-key getOrDefault 안전 (immutable Map.of() 는 NPE)
         }
         return categoryRepository.findByIdInAndFamilyId(ids, familyId).stream()
                 .collect(Collectors.toMap(Category::getId, Function.identity()));
@@ -341,11 +342,11 @@ public class TransactionService {
     private Map<Long, List<String>> loadTagNames(Long familyId, Collection<Transaction> txs) {
         List<Long> txIds = txs.stream().map(Transaction::getId).toList();
         if (txIds.isEmpty()) {
-            return Map.of();
+            return Collections.emptyMap(); // null-key getOrDefault 안전 (immutable Map.of() 는 NPE)
         }
         List<TransactionTag> links = transactionTagRepository.findByTransactionIdInAndFamilyId(txIds, familyId);
         if (links.isEmpty()) {
-            return Map.of();
+            return Collections.emptyMap(); // null-key getOrDefault 안전 (immutable Map.of() 는 NPE)
         }
         Set<Long> tagIds = links.stream().map(TransactionTag::getTagId).collect(Collectors.toSet());
         Map<Long, String> nameByTagId = tagRepository.findByIdInAndFamilyId(tagIds, familyId).stream()
