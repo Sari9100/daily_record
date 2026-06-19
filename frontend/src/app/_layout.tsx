@@ -60,6 +60,14 @@ function AuthGate() {
         name="schedule/[id]"
         options={{ presentation: 'modal', headerShown: true, title: '일정 편집' }}
       />
+      <Stack.Screen
+        name="diary/new"
+        options={{ presentation: 'modal', headerShown: true, title: '기록 작성' }}
+      />
+      <Stack.Screen
+        name="diary/[id]"
+        options={{ presentation: 'modal', headerShown: true, title: '기록 편집' }}
+      />
     </Stack>
   );
 }

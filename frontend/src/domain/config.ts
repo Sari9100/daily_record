@@ -6,3 +6,11 @@
  */
 export const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:8080/api/v1';
+
+/** 서버 오리진(/api/v1 제거) — 사진 raw 서명 URL 등 절대경로 구성용. */
+export const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1\/?$/, '');
+
+/** 백엔드가 내려준 상대 경로(예: /api/v1/photos/3/raw?...)를 절대 URL 로. */
+export function mediaUrl(path: string): string {
+  return path.startsWith('http') ? path : `${API_ORIGIN}${path}`;
+}
