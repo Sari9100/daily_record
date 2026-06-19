@@ -156,6 +156,10 @@ public class Schedule extends FamilyScopedEntity {
         return syncStatus;
     }
 
+    public @Nullable String getGoogleEventId() {
+        return googleEventId;
+    }
+
     /** 클라 수정 가능한 필드만 갱신. google 동기화 필드는 제외(서버·동기화 모듈 전용). */
     public void update(String title, @Nullable String description, @Nullable String location,
                        @Nullable Instant startedAt, @Nullable Instant endedAt,
@@ -205,5 +209,13 @@ public class Schedule extends FamilyScopedEntity {
         this.googleEventId = googleEventId;
         this.syncStatus = SyncStatus.SYNCED;
         this.lastSyncedAt = lastSyncedAt;
+    }
+
+    /**
+     * 로컬(우리 앱) 변경 → 구글로 전송 대기(PENDING). 무한루프 가드: 구글 유입 변경은
+     * {@link #markGoogleSynced}(SYNCED)로 처리되어 절대 PENDING 이 되지 않으므로 되돌아 나가지 않는다.
+     */
+    public void markPendingSync() {
+        this.syncStatus = SyncStatus.PENDING;
     }
 }

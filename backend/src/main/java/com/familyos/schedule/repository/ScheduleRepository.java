@@ -20,6 +20,10 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Long> {
     /** 구글 동기화 upsert 용 — google_event_id 로 기존 일정 매칭. */
     Optional<Schedule> findByGoogleEventIdAndFamilyId(String googleEventId, Long familyId);
 
+    /** 우리→구글 전송 대기(PENDING) 목록 — 작성자 본인 것만 자신의 구글 캘린더로. */
+    List<Schedule> findByFamilyIdAndCreatedByAndSyncStatus(Long familyId, Long createdBy,
+                                                           com.familyos.schedule.entity.SyncStatus syncStatus);
+
     /**
      * 권한 범위 내 일정 목록 — visibility 를 DB WHERE 에서 필터.
      * SHARED_PERSONAL 은 작성자 또는 subject 지정자에게만(EXISTS 서브쿼리).

@@ -129,6 +129,7 @@ public class ScheduleService {
                 familyId, req.title(), req.description(), req.location(),
                 req.startedAt(), req.endedAt(), req.startDate(), endDateOrStart(req), req.allDay(),
                 req.visibility(), req.scheduleType(), req.recurrenceRule(), req.collectionId()));
+        schedule.markPendingSync(); // 로컬 생성 → 구글 전송 대기(연결된 경우 push 시 전송)
 
         insertSubjects(familyId, schedule.getId(), subjects);
         insertParticipants(familyId, schedule.getId(), participants);
@@ -159,6 +160,7 @@ public class ScheduleService {
         schedule.update(req.title(), req.description(), req.location(),
                 req.startedAt(), req.endedAt(), req.startDate(), endDateOrStart(req), req.allDay(),
                 req.visibility(), req.scheduleType(), req.recurrenceRule(), req.collectionId());
+        schedule.markPendingSync(); // 로컬 수정 → 구글 재전송 대기
 
         syncSubjects(familyId, id, subjects);
         syncParticipants(familyId, id, participants);

@@ -2,8 +2,10 @@ package com.familyos.integration.google.controller;
 
 import com.familyos.common.web.ApiResponse;
 import com.familyos.integration.google.dto.GoogleConnectResponse;
+import com.familyos.integration.google.dto.GooglePushResult;
 import com.familyos.integration.google.dto.GoogleSyncResult;
 import com.familyos.integration.google.service.GoogleConnectService;
+import com.familyos.integration.google.service.GooglePushService;
 import com.familyos.integration.google.service.GoogleSyncService;
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.MediaType;
@@ -28,10 +30,13 @@ public class GoogleController {
 
     private final GoogleConnectService connectService;
     private final GoogleSyncService syncService;
+    private final GooglePushService pushService;
 
-    public GoogleController(GoogleConnectService connectService, GoogleSyncService syncService) {
+    public GoogleController(GoogleConnectService connectService, GoogleSyncService syncService,
+                            GooglePushService pushService) {
         this.connectService = connectService;
         this.syncService = syncService;
+        this.pushService = pushService;
     }
 
     @PostMapping("/connect")
@@ -43,6 +48,12 @@ public class GoogleController {
     @PostMapping("/sync")
     public ApiResponse<GoogleSyncResult> sync() {
         return ApiResponse.ok(syncService.syncForCurrentUser());
+    }
+
+    /** 우리→구글 전송(Phase 2). 로컬 PENDING 일정을 구글에 생성/수정. */
+    @PostMapping("/push")
+    public ApiResponse<GooglePushResult> push() {
+        return ApiResponse.ok(pushService.pushPendingForCurrentUser());
     }
 
     /** 브라우저 리디렉션 대상 — 사람이 보는 화면이라 간단한 텍스트로 응답(프론트 연동 시 리디렉션으로 교체). */
