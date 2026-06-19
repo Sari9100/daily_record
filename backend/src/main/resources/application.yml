@@ -24,6 +24,13 @@ spring:
 hermes:
   service-token: ${HERMES_SERVICE_TOKEN:}
 
+# 구글 캘린더 연동 (OAuth2). 미설정 시 연동 비활성
+google:
+  client-id: ${GOOGLE_CLIENT_ID:}
+  client-secret: ${GOOGLE_CLIENT_SECRET:}
+  redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost:8080/api/v1/integrations/google/callback}
+  token-enc-key: ${GOOGLE_TOKEN_ENC_KEY:}   # Base64 32바이트(AES-256). refresh token 암호화
+
 # MyBatis: family_id/deleted_at 는 매퍼 WHERE 에 직접 명시 (자동필터 미적용)
 mybatis:
   mapper-locations: classpath:mapper/**/*.xml

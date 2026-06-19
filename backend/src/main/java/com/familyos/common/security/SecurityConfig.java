@@ -1,5 +1,6 @@
 package com.familyos.common.security;
 
+import com.familyos.integration.google.GoogleProperties;
 import com.familyos.integration.telegram.HermesProperties;
 import com.familyos.integration.telegram.security.HermesServiceTokenFilter;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -35,7 +36,7 @@ import java.util.List;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-@EnableConfigurationProperties({JwtProperties.class, HermesProperties.class})
+@EnableConfigurationProperties({JwtProperties.class, HermesProperties.class, GoogleProperties.class})
 public class SecurityConfig {
 
     private final RestAuthenticationEntryPoint authenticationEntryPoint;
@@ -72,7 +73,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/photos/*/raw").permitAll()
                         // Hermes 내부 API: JWT 면제 + HermesServiceTokenFilter 가 서비스 토큰 검증
                         .requestMatchers("/api/v1/integrations/telegram/**").permitAll()
-                        // 구글 webhook 등 공개 콜백은 추후 별도 permitAll + 채널토큰 검증으로 추가
+                        // 구글 OAuth 콜백: 브라우저 리디렉션(JWT 없음) → state HMAC 로 주체 검증
+                        .requestMatchers(HttpMethod.GET, "/api/v1/integrations/google/callback").permitAll()
+                        // (Phase 3) 구글 푸시 webhook 도 추후 permitAll + 채널토큰 검증으로 추가
                         .anyRequest().authenticated())
                 // 서비스 토큰 검증을 JWT 필터보다 먼저 (텔레그램 경로만 관여)
                 .addFilterBefore(new HermesServiceTokenFilter(hermesProperties.serviceToken(), objectMapper),
