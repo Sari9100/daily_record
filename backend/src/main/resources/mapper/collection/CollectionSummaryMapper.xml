@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+  묶음 요약 집계.
+  ★ family_id = #{familyId} 와 deleted_at IS NULL 을 모든 서브쿼리 WHERE 에 직접 명시 (Hibernate 필터 미적용).
+  ★ 거래 건수/합계는 TRANSFER 제외. 사진은 묶음에 속한 diary 의 사진 수.
+  table `transaction` 은 예약어이므로 backtick.
+-->
+<mapper namespace="com.familyos.collection.mapper.CollectionSummaryMapper">
+
+    <select id="selectSummary" resultType="com.familyos.collection.dto.CollectionSummaryResponse">
+        select
+            (select coalesce(sum(case when t.transaction_type = 'INCOME' then t.amount else 0 end), 0)
+                 from `transaction` t
+                 where t.collection_id = #{collectionId} and t.family_id = #{familyId} and t.deleted_at is null
+            ) as totalIncome,
+            (select coalesce(sum(case when t.transaction_type = 'EXPENSE' then t.amount else 0 end), 0)
+                 from `transaction` t
+                 where t.collection_id = #{collectionId} and t.family_id = #{familyId} and t.deleted_at is null
+            ) as totalExpense,
+            (select count(*)
+                 from `transaction` t
+                 where t.collection_id = #{collectionId} and t.family_id = #{familyId} and t.deleted_at is null
+                   and t.transaction_type &lt;&gt; 'TRANSFER'
+            ) as transactionCount,
+            (select count(*)
+                 from schedule s
+                 where s.collection_id = #{collectionId} and s.family_id = #{familyId} and s.deleted_at is null
+            ) as scheduleCount,
+            (select count(*)
+                 from diary d
+                 where d.collection_id = #{collectionId} and d.family_id = #{familyId} and d.deleted_at is null
+            ) as diaryCount,
+            (select count(*)
+                 from photo p
+                 where p.family_id = #{familyId} and p.deleted_at is null
+                   and p.diary_id in (
+                       select d2.id from diary d2
+                       where d2.collection_id = #{collectionId} and d2.family_id = #{familyId} and d2.deleted_at is null
+                   )
+            ) as photoCount
+    </select>
+</mapper>

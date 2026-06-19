@@ -13,3 +13,12 @@ export type CollectionCreate = {
   startedAt?: string | null;
   endedAt?: string | null;
 };
+
+export type CollectionSummary = {
+  totalIncome: number;
+  totalExpense: number;
+  transactionCount: number;
+  scheduleCount: number;
+  diaryCount: number;
+  photoCount: number;
+};

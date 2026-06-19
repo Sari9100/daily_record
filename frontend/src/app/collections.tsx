@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import {
@@ -22,6 +23,7 @@ import type { Collection } from '@/domain/collection';
 import { confirmAsync } from '@/lib/confirm';
 
 export default function CollectionsScreen() {
+  const router = useRouter();
   const listQ = useCollections();
   const createMut = useCreateCollection();
   const updateMut = useUpdateCollection();
@@ -86,12 +88,17 @@ export default function CollectionsScreen() {
           ListHeaderComponent={<Text style={styles.note}>여행·행사 단위로 거래·일정·기록을 묶습니다. 항목은 각 작성 화면에서 연결하세요.</Text>}
           ListEmptyComponent={<Text style={styles.emptyText}>묶음이 없습니다. + 로 추가하세요.</Text>}
           renderItem={({ item }) => (
-            <Pressable style={styles.row} onPress={() => openEdit(item)}>
+            <Pressable
+              style={styles.row}
+              onPress={() => router.push({ pathname: '/collection/[id]', params: { id: item.id } })}>
               <View style={styles.rowLeft}>
                 <Text style={styles.rowTitle}>{item.name}</Text>
                 {item.description ? <Text style={styles.rowSub}>{item.description}</Text> : null}
               </View>
-              <Pressable hitSlop={10} onPress={() => remove(item)}>
+              <Pressable hitSlop={8} onPress={() => openEdit(item)} style={styles.iconBtn}>
+                <Ionicons name="pencil" size={18} color="#5f6368" />
+              </Pressable>
+              <Pressable hitSlop={8} onPress={() => remove(item)} style={styles.iconBtn}>
                 <Ionicons name="trash-outline" size={20} color="#d93025" />
               </Pressable>
             </Pressable>
@@ -138,8 +145,9 @@ const styles = StyleSheet.create({
   note: { fontSize: 13, color: '#9aa0a6', paddingVertical: 8 },
   emptyBox: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   emptyText: { color: '#5f6368', fontSize: 15 },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, gap: 12 },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, gap: 14 },
   rowLeft: { flex: 1, gap: 3 },
+  iconBtn: { padding: 2 },
   rowTitle: { fontSize: 16, color: '#202124', fontWeight: '500' },
   rowSub: { fontSize: 13, color: '#5f6368' },
   sep: { height: 1, backgroundColor: '#f1f3f4' },

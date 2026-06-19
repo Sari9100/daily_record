@@ -2,6 +2,7 @@ package com.familyos.collection.controller;
 
 import com.familyos.collection.dto.CollectionRequest;
 import com.familyos.collection.dto.CollectionResponse;
+import com.familyos.collection.dto.CollectionSummaryResponse;
 import com.familyos.collection.service.CollectionService;
 import com.familyos.common.web.ApiResponse;
 import jakarta.validation.Valid;
@@ -31,6 +32,12 @@ public class CollectionController {
     @GetMapping
     public ApiResponse<List<CollectionResponse>> list() {
         return ApiResponse.ok(collectionService.list());
+    }
+
+    /** 묶음 요약 — 연결된 거래·일정·기록·사진 집계. */
+    @GetMapping("/{id}/summary")
+    public ApiResponse<CollectionSummaryResponse> summary(@PathVariable Long id) {
+        return ApiResponse.ok(collectionService.summary(id));
     }
 
     @PostMapping

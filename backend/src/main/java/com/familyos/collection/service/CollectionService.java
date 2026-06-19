@@ -2,7 +2,9 @@ package com.familyos.collection.service;
 
 import com.familyos.collection.dto.CollectionRequest;
 import com.familyos.collection.dto.CollectionResponse;
+import com.familyos.collection.dto.CollectionSummaryResponse;
 import com.familyos.collection.entity.Collection;
+import com.familyos.collection.mapper.CollectionSummaryMapper;
 import com.familyos.collection.repository.CollectionRepository;
 import com.familyos.common.audit.SoftDeleteSupport;
 import com.familyos.common.context.FamilyContext;
@@ -21,10 +23,14 @@ import java.util.List;
 public class CollectionService {
 
     private final CollectionRepository collectionRepository;
+    private final CollectionSummaryMapper summaryMapper;
     private final SoftDeleteSupport softDeleteSupport;
 
-    public CollectionService(CollectionRepository collectionRepository, SoftDeleteSupport softDeleteSupport) {
+    public CollectionService(CollectionRepository collectionRepository,
+                             CollectionSummaryMapper summaryMapper,
+                             SoftDeleteSupport softDeleteSupport) {
         this.collectionRepository = collectionRepository;
+        this.summaryMapper = summaryMapper;
         this.softDeleteSupport = softDeleteSupport;
     }
 
@@ -32,6 +38,13 @@ public class CollectionService {
         Long familyId = FamilyContext.getFamilyId();
         return collectionRepository.findByFamilyIdOrderByIdDesc(familyId)
                 .stream().map(CollectionResponse::from).toList();
+    }
+
+    /** 묶음 요약 — 연결된 거래·일정·기록·사진 집계(MyBatis). 존재/가족 검증 후 조회. */
+    public CollectionSummaryResponse summary(Long id) {
+        Long familyId = FamilyContext.getFamilyId();
+        load(id, familyId); // 존재·가족 격리 검증(없으면 404)
+        return summaryMapper.selectSummary(familyId, id);
     }
 
     @Transactional
