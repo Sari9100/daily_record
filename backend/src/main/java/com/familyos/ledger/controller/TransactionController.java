@@ -2,10 +2,12 @@ package com.familyos.ledger.controller;
 
 import com.familyos.common.web.ApiResponse;
 import com.familyos.common.web.PageResponse;
+import com.familyos.ledger.dto.StatisticsResponse;
 import com.familyos.ledger.dto.TransactionRequest;
 import com.familyos.ledger.dto.TransactionResponse;
 import com.familyos.ledger.entity.TransactionType;
 import com.familyos.ledger.service.TransactionService;
+import com.familyos.ledger.service.TransactionStatisticsService;
 import jakarta.validation.Valid;
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
@@ -27,9 +29,12 @@ import java.time.Instant;
 public class TransactionController {
 
     private final TransactionService transactionService;
+    private final TransactionStatisticsService statisticsService;
 
-    public TransactionController(TransactionService transactionService) {
+    public TransactionController(TransactionService transactionService,
+                                 TransactionStatisticsService statisticsService) {
         this.transactionService = transactionService;
+        this.statisticsService = statisticsService;
     }
 
     @GetMapping
@@ -42,6 +47,19 @@ public class TransactionController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         return ApiResponse.ok(transactionService.list(from, to, type, categoryId, scope, page, size));
+    }
+
+    /**
+     * 통계(MyBatis). TRANSFER 제외, 카테고리별/월별 집계. groupBy 는 호환용 파라미터(응답은 항상 전체 구조).
+     * /{id} 보다 먼저 매칭되도록 리터럴 경로.
+     */
+    @GetMapping("/statistics")
+    public ApiResponse<StatisticsResponse> statistics(
+            @RequestParam(required = false) @Nullable Instant from,
+            @RequestParam(required = false) @Nullable Instant to,
+            @RequestParam(required = false) @Nullable String groupBy,
+            @RequestParam(required = false) @Nullable String scope) {
+        return ApiResponse.ok(statisticsService.statistics(from, to, scope));
     }
 
     @PostMapping

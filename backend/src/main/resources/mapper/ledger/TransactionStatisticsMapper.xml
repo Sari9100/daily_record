@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+  가계부 통계.
+  ★ family_id = #{familyId} 와 deleted_at IS NULL 을 모든 WHERE 에 직접 명시 (Hibernate 필터 미적용).
+  ★ 통계는 TRANSFER 제외. visibility 권한 조건 WHERE 적용(메모리 필터 금지).
+  table `transaction` 은 예약어이므로 backtick.
+-->
+<mapper namespace="com.familyos.ledger.mapper.TransactionStatisticsMapper">
+
+    <!-- 공통 필터: 가족 격리 + soft-delete + 기간/scope + visibility 권한 + TRANSFER 제외 -->
+    <sql id="baseFilter">
+        t.family_id = #{familyId}
+        and t.deleted_at is null
+        and t.transaction_type &lt;&gt; 'TRANSFER'
+        <if test="from != null">and t.occurred_at &gt;= #{from}</if>
+        <if test="to != null">and t.occurred_at &lt;= #{to}</if>
+        <if test="scope != null">and t.visibility = #{scope}</if>
+        and (t.visibility = 'FAMILY'
+             or (t.visibility = 'PARENTS' and #{isParent} = true)
+             or (t.visibility = 'PRIVATE' and t.created_by = #{personId}))
+    </sql>
+
+    <select id="selectTotals" resultType="com.familyos.ledger.dto.StatTotals">
+        select
+            coalesce(sum(case when t.transaction_type = 'INCOME'  then t.amount else 0 end), 0) as totalIncome,
+            coalesce(sum(case when t.transaction_type = 'EXPENSE' then t.amount else 0 end), 0) as totalExpense
+        from `transaction` t
+        <where>
+            <include refid="baseFilter"/>
+        </where>
+    </select>
+
+    <!-- 카테고리별: 삭제된 카테고리도 과거 거래 집계에 포함(LEFT JOIN, c.deleted_at 미필터) -->
+    <select id="selectByCategory" resultType="com.familyos.ledger.dto.CategoryStat">
+        select
+            t.category_id as categoryId,
+            c.name        as name,
+            c.type        as type,
+            coalesce(sum(t.amount), 0) as amount
+        from `transaction` t
+        left join category c on c.id = t.category_id
+        <where>
+            <include refid="baseFilter"/>
+            and t.category_id is not null
+        </where>
+        group by t.category_id, c.name, c.type
+        order by amount desc
+    </select>
+
+    <!-- 월별: 뷰어 timezone offset 으로 UTC→로컬 변환 후 YYYY-MM 그룹 -->
+    <select id="selectByMonth" resultType="com.familyos.ledger.dto.MonthStat">
+        select
+            date_format(convert_tz(t.occurred_at, '+00:00', #{zoneOffset}), '%Y-%m') as month,
+            coalesce(sum(case when t.transaction_type = 'INCOME'  then t.amount else 0 end), 0) as income,
+            coalesce(sum(case when t.transaction_type = 'EXPENSE' then t.amount else 0 end), 0) as expense
+        from `transaction` t
+        <where>
+            <include refid="baseFilter"/>
+        </where>
+        group by month
+        order by month asc
+    </select>
+
+</mapper>
