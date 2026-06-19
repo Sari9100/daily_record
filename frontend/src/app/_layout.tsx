@@ -52,6 +52,14 @@ function AuthGate() {
       <Stack.Screen name="accounts" options={{ headerShown: true, title: '계좌 관리' }} />
       <Stack.Screen name="categories" options={{ headerShown: true, title: '카테고리 관리' }} />
       <Stack.Screen name="statistics" options={{ headerShown: true, title: '통계' }} />
+      <Stack.Screen
+        name="schedule/new"
+        options={{ presentation: 'modal', headerShown: true, title: '일정 추가' }}
+      />
+      <Stack.Screen
+        name="schedule/[id]"
+        options={{ presentation: 'modal', headerShown: true, title: '일정 편집' }}
+      />
     </Stack>
   );
 }
