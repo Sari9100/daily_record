@@ -21,6 +21,10 @@ import com.familyos.ledger.repository.AccountRepository;
 import com.familyos.ledger.repository.CategoryRepository;
 import com.familyos.ledger.repository.TransactionRepository;
 import com.familyos.person.repository.FamilyMembershipRepository;
+import com.familyos.tag.entity.Tag;
+import com.familyos.tag.entity.TransactionTag;
+import com.familyos.tag.repository.TagRepository;
+import com.familyos.tag.repository.TransactionTagRepository;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -31,8 +35,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -51,6 +57,8 @@ public class TransactionService {
     private final CategoryRepository categoryRepository;
     private final CollectionRepository collectionRepository;
     private final FamilyMembershipRepository membershipRepository;
+    private final TagRepository tagRepository;
+    private final TransactionTagRepository transactionTagRepository;
     private final VisibilityGuard visibilityGuard;
     private final SoftDeleteSupport softDeleteSupport;
 
@@ -59,6 +67,8 @@ public class TransactionService {
                               CategoryRepository categoryRepository,
                               CollectionRepository collectionRepository,
                               FamilyMembershipRepository membershipRepository,
+                              TagRepository tagRepository,
+                              TransactionTagRepository transactionTagRepository,
                               VisibilityGuard visibilityGuard,
                               SoftDeleteSupport softDeleteSupport) {
         this.transactionRepository = transactionRepository;
@@ -66,6 +76,8 @@ public class TransactionService {
         this.categoryRepository = categoryRepository;
         this.collectionRepository = collectionRepository;
         this.membershipRepository = membershipRepository;
+        this.tagRepository = tagRepository;
+        this.transactionTagRepository = transactionTagRepository;
         this.visibilityGuard = visibilityGuard;
         this.softDeleteSupport = softDeleteSupport;
     }
@@ -83,8 +95,9 @@ public class TransactionService {
 
         Map<Long, Account> accounts = loadAccounts(user.familyId(), result.getContent());
         Map<Long, Category> categories = loadCategories(user.familyId(), result.getContent());
+        Map<Long, List<String>> tagNames = loadTagNames(user.familyId(), result.getContent());
 
-        Page<TransactionResponse> mapped = result.map(t -> toResponse(t, user, accounts, categories));
+        Page<TransactionResponse> mapped = result.map(t -> toResponse(t, user, accounts, categories, tagNames));
         return PageResponse.from(mapped);
     }
 
@@ -98,6 +111,8 @@ public class TransactionService {
         validateTypeAccounts(req.transactionType(), req.sourceAccountId(), req.targetAccountId());
         // ② 참조 alive
         validateReferencesAlive(familyId, req);
+        Set<Long> tagIds = new LinkedHashSet<>(req.tagIdsOrEmpty());
+        validateTagsAlive(familyId, tagIds);
 
         // ④ 서버 결정값
         SettlementStatus settlement = decideSettlement(req.visibility());
@@ -108,9 +123,11 @@ public class TransactionService {
                 familyId, req.transactionType(), req.amount(), currency,
                 req.sourceAccountId(), req.targetAccountId(), req.categoryId(), req.subjectPersonId(),
                 req.visibility(), settlement, req.occurredAt(), req.memo(), req.collectionId(), source));
+        tagIds.forEach(tagId -> transactionTagRepository.save(new TransactionTag(familyId, tx.getId(), tagId)));
 
         return toResponse(tx, user,
-                loadAccounts(familyId, List.of(tx)), loadCategories(familyId, List.of(tx)));
+                loadAccounts(familyId, List.of(tx)), loadCategories(familyId, List.of(tx)),
+                loadTagNames(familyId, List.of(tx)));
     }
 
     @Transactional
@@ -127,6 +144,8 @@ public class TransactionService {
         validateVisibility(req.visibility());
         validateTypeAccounts(req.transactionType(), req.sourceAccountId(), req.targetAccountId());
         validateReferencesAlive(familyId, req);
+        Set<Long> tagIds = new LinkedHashSet<>(req.tagIdsOrEmpty());
+        validateTagsAlive(familyId, tagIds);
 
         SettlementStatus settlement = decideSettlement(req.visibility());
         String currency = (req.currency() == null || req.currency().isBlank()) ? "KRW" : req.currency();
@@ -134,9 +153,11 @@ public class TransactionService {
         tx.update(req.transactionType(), req.amount(), currency,
                 req.sourceAccountId(), req.targetAccountId(), req.categoryId(), req.subjectPersonId(),
                 req.visibility(), settlement, req.occurredAt(), req.memo(), req.collectionId());
+        syncTags(familyId, id, tagIds);
 
         return toResponse(tx, user,
-                loadAccounts(familyId, List.of(tx)), loadCategories(familyId, List.of(tx)));
+                loadAccounts(familyId, List.of(tx)), loadCategories(familyId, List.of(tx)),
+                loadTagNames(familyId, List.of(tx)));
     }
 
     @Transactional
@@ -145,6 +166,9 @@ public class TransactionService {
         Transaction tx = transactionRepository.findByIdAndFamilyId(id, user.familyId())
                 .orElseThrow(() -> NotFoundException.of("거래", id));
         visibilityGuard.assertCanEdit(tx, user); // 작성자 본인만
+        // 태그 연결도 함께 soft-delete (Tag 자체는 보존)
+        transactionTagRepository.findByTransactionIdAndFamilyId(id, user.familyId())
+                .forEach(tt -> softDeleteSupport.softDelete(tt, transactionTagRepository));
         softDeleteSupport.softDelete(tx, transactionRepository);
     }
 
@@ -213,6 +237,28 @@ public class TransactionService {
         }
     }
 
+    /** 연결할 태그가 모두 alive(같은 가족)인지 검증. 누락/삭제 시 422 (1-4). */
+    private void validateTagsAlive(Long familyId, Set<Long> tagIds) {
+        if (tagIds.isEmpty()) {
+            return;
+        }
+        long aliveCount = tagRepository.findByIdInAndFamilyId(tagIds, familyId).size();
+        if (aliveCount != tagIds.size()) {
+            throw new BusinessException("태그가 존재하지 않거나 삭제되었습니다.");
+        }
+    }
+
+    /** 거래의 태그 연결을 target 집합으로 동기화(없어진 것 soft-delete, 새 것 insert). */
+    private void syncTags(Long familyId, Long transactionId, Set<Long> target) {
+        List<TransactionTag> existing = transactionTagRepository.findByTransactionIdAndFamilyId(transactionId, familyId);
+        Set<Long> existingTagIds = existing.stream().map(TransactionTag::getTagId)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        existing.stream().filter(tt -> !target.contains(tt.getTagId()))
+                .forEach(tt -> softDeleteSupport.softDelete(tt, transactionTagRepository));
+        target.stream().filter(tagId -> !existingTagIds.contains(tagId))
+                .forEach(tagId -> transactionTagRepository.save(new TransactionTag(familyId, transactionId, tagId)));
+    }
+
     private void assertAccountAlive(Long familyId, @Nullable Long accountId) {
         if (accountId != null && accountRepository.findByIdAndFamilyId(accountId, familyId).isEmpty()) {
             throw new BusinessException("계좌가 존재하지 않거나 삭제되었습니다: id=" + accountId);
@@ -241,14 +287,16 @@ public class TransactionService {
     // ---- 응답 매핑(마스킹) ----
 
     private TransactionResponse toResponse(Transaction t, AuthUser viewer,
-                                           Map<Long, Account> accounts, Map<Long, Category> categories) {
+                                           Map<Long, Account> accounts, Map<Long, Category> categories,
+                                           Map<Long, List<String>> tagNames) {
         return new TransactionResponse(
                 t.getId(), t.getTransactionType(), t.getAmount(), t.getCurrency(),
                 categoryRef(t.getCategoryId(), categories),
                 AccountMasking.visibleRef(account(t.getSourceAccountId(), accounts), viewer.personId()),
                 AccountMasking.visibleRef(account(t.getTargetAccountId(), accounts), viewer.personId()),
                 t.getSubjectPersonId(), t.getVisibility(), t.getSettlementStatus(),
-                t.getOccurredAt(), t.getMemo(), t.getCollectionId(), List.of());
+                t.getOccurredAt(), t.getMemo(), t.getCollectionId(),
+                tagNames.getOrDefault(t.getId(), List.of()));
     }
 
     private @Nullable Account account(@Nullable Long id, Map<Long, Account> accounts) {
@@ -287,5 +335,24 @@ public class TransactionService {
         }
         return categoryRepository.findByIdInAndFamilyId(ids, familyId).stream()
                 .collect(Collectors.toMap(Category::getId, Function.identity()));
+    }
+
+    /** transactionId → 태그명 목록 (삭제된 태그는 이름 해석 안 됨 → 제외). */
+    private Map<Long, List<String>> loadTagNames(Long familyId, Collection<Transaction> txs) {
+        List<Long> txIds = txs.stream().map(Transaction::getId).toList();
+        if (txIds.isEmpty()) {
+            return Map.of();
+        }
+        List<TransactionTag> links = transactionTagRepository.findByTransactionIdInAndFamilyId(txIds, familyId);
+        if (links.isEmpty()) {
+            return Map.of();
+        }
+        Set<Long> tagIds = links.stream().map(TransactionTag::getTagId).collect(Collectors.toSet());
+        Map<Long, String> nameByTagId = tagRepository.findByIdInAndFamilyId(tagIds, familyId).stream()
+                .collect(Collectors.toMap(Tag::getId, Tag::getName));
+        return links.stream()
+                .filter(tt -> nameByTagId.containsKey(tt.getTagId()))
+                .collect(Collectors.groupingBy(TransactionTag::getTransactionId,
+                        Collectors.mapping(tt -> nameByTagId.get(tt.getTagId()), Collectors.toList())));
     }
 }

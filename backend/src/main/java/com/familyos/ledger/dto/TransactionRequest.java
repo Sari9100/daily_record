@@ -9,6 +9,7 @@ import org.jspecify.annotations.Nullable;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 
 /**
  * 거래 생성/수정 요청.
@@ -28,6 +29,11 @@ public record TransactionRequest(
         @NotNull Instant occurredAt,
         @Nullable String memo,
         @Nullable Long collectionId,
-        @Nullable TransactionSource source
+        @Nullable TransactionSource source,
+        @Nullable List<Long> tagIds
 ) {
+
+    public List<Long> tagIdsOrEmpty() {
+        return tagIds == null ? List.of() : tagIds;
+    }
 }

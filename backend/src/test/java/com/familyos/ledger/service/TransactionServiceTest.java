@@ -29,6 +29,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -53,6 +54,8 @@ class TransactionServiceTest {
     @Mock CategoryRepository categoryRepository;
     @Mock com.familyos.collection.repository.CollectionRepository collectionRepository;
     @Mock FamilyMembershipRepository membershipRepository;
+    @Mock com.familyos.tag.repository.TagRepository tagRepository;
+    @Mock com.familyos.tag.repository.TransactionTagRepository transactionTagRepository;
     @Mock VisibilityGuard visibilityGuard;
     @Mock com.familyos.common.audit.SoftDeleteSupport softDeleteSupport;
 
@@ -61,7 +64,8 @@ class TransactionServiceTest {
     @BeforeEach
     void setUp() {
         service = new TransactionService(transactionRepository, accountRepository, categoryRepository,
-                collectionRepository, membershipRepository, visibilityGuard, softDeleteSupport);
+                collectionRepository, membershipRepository, tagRepository, transactionTagRepository,
+                visibilityGuard, softDeleteSupport);
         FamilyContext.set(new AuthUser(1L, 10L, FAMILY_ID, FamilyRole.PARENT));
     }
 
@@ -73,7 +77,7 @@ class TransactionServiceTest {
     private TransactionRequest req(TransactionType type, Visibility vis,
                                    Long source, Long target, Long categoryId) {
         return new TransactionRequest(type, new BigDecimal("50000"), "KRW",
-                source, target, categoryId, null, vis, Instant.parse("2026-06-19T08:30:00Z"), "메모", null, null);
+                source, target, categoryId, null, vis, Instant.parse("2026-06-19T08:30:00Z"), "메모", null, null, null);
     }
 
     @Test
@@ -114,6 +118,17 @@ class TransactionServiceTest {
         when(accountRepository.findByIdAndFamilyId(5L, FAMILY_ID)).thenReturn(Optional.empty()); // alive 아님
         assertThatThrownBy(() -> service.create(req(TransactionType.EXPENSE, Visibility.PRIVATE, 5L, null, null)))
                 .isInstanceOf(BusinessException.class);
+        verify(transactionRepository, never()).save(any());
+    }
+
+    @Test
+    void 삭제되었거나_없는_태그_연결시_422() {
+        when(accountRepository.findByIdAndFamilyId(5L, FAMILY_ID)).thenReturn(Optional.of(account(AccountOwnerType.PERSON, 1L)));
+        when(tagRepository.findByIdInAndFamilyId(any(), any())).thenReturn(List.of()); // 요청 태그 중 alive 0개
+        TransactionRequest withTag = new TransactionRequest(TransactionType.EXPENSE, new BigDecimal("1000"), "KRW",
+                5L, null, null, null, Visibility.PRIVATE, Instant.parse("2026-06-19T08:30:00Z"), null, null, null, List.of(7L));
+
+        assertThatThrownBy(() -> service.create(withTag)).isInstanceOf(BusinessException.class);
         verify(transactionRepository, never()).save(any());
     }
 
