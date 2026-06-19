@@ -5,13 +5,16 @@ import com.familyos.integration.google.dto.GoogleConnectResponse;
 import com.familyos.integration.google.dto.GooglePushResult;
 import com.familyos.integration.google.dto.GoogleSyncResult;
 import com.familyos.integration.google.service.GoogleConnectService;
+import com.familyos.integration.google.service.GooglePushChannelService;
 import com.familyos.integration.google.service.GooglePushService;
 import com.familyos.integration.google.service.GoogleSyncService;
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -31,12 +34,14 @@ public class GoogleController {
     private final GoogleConnectService connectService;
     private final GoogleSyncService syncService;
     private final GooglePushService pushService;
+    private final GooglePushChannelService channelService;
 
     public GoogleController(GoogleConnectService connectService, GoogleSyncService syncService,
-                            GooglePushService pushService) {
+                            GooglePushService pushService, GooglePushChannelService channelService) {
         this.connectService = connectService;
         this.syncService = syncService;
         this.pushService = pushService;
+        this.channelService = channelService;
     }
 
     @PostMapping("/connect")
@@ -54,6 +59,19 @@ public class GoogleController {
     @PostMapping("/push")
     public ApiResponse<GooglePushResult> push() {
         return ApiResponse.ok(pushService.pushPendingForCurrentUser());
+    }
+
+    /**
+     * 구글 푸시 webhook 수신(permitAll, 공개). 본문엔 데이터가 없고 헤더로 채널·상태가 온다.
+     * 채널 토큰 검증 후 증분 동기화를 트리거한다. 구글은 2xx 만 기대하므로 항상 200(빈 본문).
+     */
+    @PostMapping("/notifications")
+    public ResponseEntity<Void> notifications(
+            @RequestHeader(value = "X-Goog-Channel-ID", required = false) @Nullable String channelId,
+            @RequestHeader(value = "X-Goog-Channel-Token", required = false) @Nullable String channelToken,
+            @RequestHeader(value = "X-Goog-Resource-State", required = false) @Nullable String resourceState) {
+        channelService.handleNotification(channelId, channelToken, resourceState);
+        return ResponseEntity.ok().build();
     }
 
     /** 브라우저 리디렉션 대상 — 사람이 보는 화면이라 간단한 텍스트로 응답(프론트 연동 시 리디렉션으로 교체). */

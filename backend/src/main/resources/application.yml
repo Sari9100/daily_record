@@ -30,6 +30,16 @@ google:
   client-secret: ${GOOGLE_CLIENT_SECRET:}
   redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost:8080/api/v1/integrations/google/callback}
   token-enc-key: ${GOOGLE_TOKEN_ENC_KEY:}   # Base64 32바이트(AES-256). refresh token 암호화
+  # 정기 폴링(증분 sync + PENDING push). 푸시 webhook 의 신뢰성 폴백이자 기본 동기화 메커니즘
+  poll:
+    enabled: ${GOOGLE_POLL_ENABLED:true}
+    interval-ms: ${GOOGLE_POLL_INTERVAL_MS:900000}        # 15분
+    initial-delay-ms: ${GOOGLE_POLL_INITIAL_DELAY_MS:120000}  # 기동 2분 후 첫 실행
+  # 푸시 webhook(Phase 3). 공개 HTTPS 수신 URL·도메인 인증(Cloudflare) 필요 → 기본 비활성
+  push:
+    enabled: ${GOOGLE_PUSH_ENABLED:false}
+    callback-url: ${GOOGLE_PUSH_CALLBACK_URL:}   # 예: https://<공개도메인>/api/v1/integrations/google/notifications
+    token: ${GOOGLE_PUSH_TOKEN:}                  # 채널 토큰(임의 시크릿) — 수신 시 일치 검증
 
 # MyBatis: family_id/deleted_at 는 매퍼 WHERE 에 직접 명시 (자동필터 미적용)
 mybatis:

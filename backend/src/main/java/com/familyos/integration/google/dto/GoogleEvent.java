@@ -16,7 +16,8 @@ public record GoogleEvent(
         @Nullable String location,
         @Nullable GoogleEventDateTime start,
         @Nullable GoogleEventDateTime end,
-        @Nullable List<String> recurrence
+        @Nullable List<String> recurrence,
+        @Nullable String updated   // RFC3339 — 구글 측 마지막 수정 시각(충돌 last-write-wins 비교용)
 ) {
 
     @JsonIgnoreProperties(ignoreUnknown = true)

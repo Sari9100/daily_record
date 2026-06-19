@@ -212,6 +212,21 @@ public class Schedule extends FamilyScopedEntity {
     }
 
     /**
+     * 양쪽 변경 충돌(1-7) — last-write-wins 로 내용은 이미 정해진 뒤, 흔적을 남긴다(CONFLICT).
+     * 다음 증분 동기화에서 정상 변경이 들어오면 SYNCED 로 자가 치유된다.
+     */
+    public void markConflict(String googleEventId, Instant lastSyncedAt) {
+        this.googleEventId = googleEventId;
+        this.syncStatus = SyncStatus.CONFLICT;
+        this.lastSyncedAt = lastSyncedAt;
+    }
+
+    /** 구글에서 삭제됨(우리는 보존). 표시용 — 현재 사용처는 inbound cancelled→soft-delete 가 처리. */
+    public void markDeletedRemote() {
+        this.syncStatus = SyncStatus.DELETED_REMOTE;
+    }
+
+    /**
      * 로컬(우리 앱) 변경 → 구글로 전송 대기(PENDING). 무한루프 가드: 구글 유입 변경은
      * {@link #markGoogleSynced}(SYNCED)로 처리되어 절대 PENDING 이 되지 않으므로 되돌아 나가지 않는다.
      */

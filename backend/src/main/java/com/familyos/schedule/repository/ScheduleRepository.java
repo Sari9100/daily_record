@@ -25,6 +25,26 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Long> {
                                                            com.familyos.schedule.entity.SyncStatus syncStatus);
 
     /**
+     * 삭제 전송 대상 — soft-delete 되었지만 구글엔 아직 살아있는(google_event_id 보유) PENDING 일정.
+     * {@code @SoftDelete} 가 deleted_at IS NULL 을 자동 부가해 일반 조회로는 안 잡히므로 네이티브로 deleted_at IS NOT NULL 을 직접 명시.
+     * family_id 격리도 WHERE 에 직접 명시(네이티브는 필터 미적용).
+     */
+    @Query(value = """
+            SELECT * FROM schedule
+            WHERE family_id = :familyId
+              AND created_by = :personId
+              AND sync_status = 'PENDING'
+              AND google_event_id IS NOT NULL
+              AND deleted_at IS NOT NULL
+            """, nativeQuery = true)
+    List<Schedule> findDeletedPendingForGoogle(@Param("familyId") Long familyId, @Param("personId") Long personId);
+
+    /** 삭제 전송 완료 표시 — 삭제된 행이라 JPA 더티체킹 대신 네이티브 UPDATE 로 sync_status 만 전이. */
+    @org.springframework.data.jpa.repository.Modifying
+    @Query(value = "UPDATE schedule SET sync_status = 'SYNCED', last_synced_at = :now WHERE id = :id", nativeQuery = true)
+    void markDeletionPushed(@Param("id") Long id, @Param("now") Instant now);
+
+    /**
      * 권한 범위 내 일정 목록 — visibility 를 DB WHERE 에서 필터.
      * SHARED_PERSONAL 은 작성자 또는 subject 지정자에게만(EXISTS 서브쿼리).
      * 기간 필터는 시점일정(started_at) / 종일일정(start_date) 이원 처리.

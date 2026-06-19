@@ -29,7 +29,7 @@ class GoogleEventMapperTest {
     @Test
     void 시점_이벤트는_startedAt_endedAt_으로_매핑된다() {
         GoogleEvent ev = new GoogleEvent("g1", "confirmed", "회의", "주간", "회의실",
-                timed("2026-07-01T09:00:00+09:00"), timed("2026-07-01T10:00:00+09:00"), null);
+                timed("2026-07-01T09:00:00+09:00"), timed("2026-07-01T10:00:00+09:00"), null, null);
 
         MappedSchedule m = mapper.map(ev);
 
@@ -45,7 +45,7 @@ class GoogleEventMapperTest {
     void 종일_이벤트는_endDate를_배타적_보정해서_매핑된다() {
         // 구글 종일: 7/1 하루 → start.date=2026-07-01, end.date=2026-07-02(배타적)
         GoogleEvent ev = new GoogleEvent("g2", "confirmed", "기념일", null, null,
-                allDay("2026-07-01"), allDay("2026-07-02"), null);
+                allDay("2026-07-01"), allDay("2026-07-02"), null, null);
 
         MappedSchedule m = mapper.map(ev);
 
@@ -59,7 +59,7 @@ class GoogleEventMapperTest {
     @Test
     void 제목이_없으면_기본_제목으로_채운다() {
         GoogleEvent ev = new GoogleEvent("g3", "confirmed", null, null, null,
-                timed("2026-07-01T09:00:00Z"), null, null);
+                timed("2026-07-01T09:00:00Z"), null, null, null);
 
         assertThat(mapper.map(ev).title()).isEqualTo("(제목 없음)");
     }
@@ -68,14 +68,14 @@ class GoogleEventMapperTest {
     void RRULE은_recurrenceRule로_옮겨진다() {
         GoogleEvent ev = new GoogleEvent("g4", "confirmed", "반복", null, null,
                 timed("2026-07-01T09:00:00Z"), timed("2026-07-01T10:00:00Z"),
-                List.of("RRULE:FREQ=WEEKLY;BYDAY=MO"));
+                List.of("RRULE:FREQ=WEEKLY;BYDAY=MO"), null);
 
         assertThat(mapper.map(ev).recurrenceRule()).isEqualTo("RRULE:FREQ=WEEKLY;BYDAY=MO");
     }
 
     @Test
     void 시작정보가_없으면_매핑하지_않는다() {
-        GoogleEvent ev = new GoogleEvent("g5", "confirmed", "x", null, null, null, null, null);
+        GoogleEvent ev = new GoogleEvent("g5", "confirmed", "x", null, null, null, null, null, null);
         assertThat(mapper.map(ev)).isNull();
     }
 }

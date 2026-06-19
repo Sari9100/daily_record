@@ -184,6 +184,8 @@ public class ScheduleService {
                 .forEach(s -> softDeleteSupport.softDelete(s, subjectRepository));
         participantRepository.findByScheduleIdAndFamilyId(id, familyId)
                 .forEach(p -> softDeleteSupport.softDelete(p, participantRepository));
+        // 로컬 삭제 → 구글에도 전파 대기(PENDING). google_event_id 없으면 push 가 무시하므로 무해.
+        schedule.markPendingSync();
         softDeleteSupport.softDelete(schedule, scheduleRepository);
     }
 

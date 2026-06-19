@@ -71,6 +71,14 @@ public class GoogleSyncState extends FamilyScopedEntity {
         return refreshTokenEnc;
     }
 
+    public @Nullable String getChannelId() {
+        return channelId;
+    }
+
+    public @Nullable String getChannelResourceId() {
+        return channelResourceId;
+    }
+
     public @Nullable Instant getChannelExpiresAt() {
         return channelExpiresAt;
     }
@@ -88,6 +96,20 @@ public class GoogleSyncState extends FamilyScopedEntity {
         this.syncToken = syncToken;
         this.lastFullSyncAt = when;
         this.lastIncrementalAt = when;
+    }
+
+    /** 푸시 채널 등록/갱신 정보 저장(Phase 3). */
+    public void updateChannel(String channelId, @Nullable String channelResourceId, @Nullable Instant channelExpiresAt) {
+        this.channelId = channelId;
+        this.channelResourceId = channelResourceId;
+        this.channelExpiresAt = channelExpiresAt;
+    }
+
+    /** 채널 해제 흔적 제거(stop 후). */
+    public void clearChannel() {
+        this.channelId = null;
+        this.channelResourceId = null;
+        this.channelExpiresAt = null;
     }
 
     /** 연동 해제 — 토큰 무효화. */

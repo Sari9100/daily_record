@@ -71,8 +71,10 @@ public class GooglePushService {
         List<Schedule> pending = scheduleRepository.findByFamilyIdAndCreatedByAndSyncStatus(
                 user.familyId(), user.personId(), SyncStatus.PENDING);
 
-        int inserted = 0, updated = 0;
+        int inserted = 0, updated = 0, deleted = 0;
         Instant now = Instant.now();
+
+        // (1) 생성/수정 — alive 한 PENDING
         for (Schedule s : pending) {
             GoogleEventWrite body = writeMapper.toWrite(s);
             if (s.getGoogleEventId() == null) {
@@ -85,6 +87,14 @@ public class GooglePushService {
                 updated++;
             }
         }
-        return new GooglePushResult(inserted, updated);
+
+        // (2) 삭제 전송 — soft-delete 됐지만 구글엔 살아있는(google_event_id 보유) PENDING
+        List<Schedule> toDelete = scheduleRepository.findDeletedPendingForGoogle(user.familyId(), user.personId());
+        for (Schedule s : toDelete) {
+            calendarClient.deleteEvent(accessToken, CALENDAR, s.getGoogleEventId());
+            scheduleRepository.markDeletionPushed(s.getId(), now); // 삭제된 행이라 네이티브 UPDATE 로 전이
+            deleted++;
+        }
+        return new GooglePushResult(inserted, updated, deleted);
     }
 }

@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class GoogleCryptoTest {
 
     private static final String KEY_B64 = Base64.getEncoder().encodeToString(new byte[32]); // 32바이트 AES-256 키
-    private final GoogleProperties props = new GoogleProperties("cid", "client-secret", "http://localhost/cb", KEY_B64);
+    private final GoogleProperties props = new GoogleProperties("cid", "client-secret", "http://localhost/cb", KEY_B64, null);
 
     @Test
     void refresh_token_은_암복호화_왕복이_일치한다() {

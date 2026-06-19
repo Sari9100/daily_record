@@ -18,6 +18,7 @@ import com.familyos.integration.google.oauth.GoogleOAuthClient;
 import com.familyos.integration.google.repository.GoogleSyncStateRepository;
 import com.familyos.schedule.entity.Schedule;
 import com.familyos.schedule.entity.ScheduleType;
+import com.familyos.schedule.entity.SyncStatus;
 import com.familyos.schedule.repository.ScheduleRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -139,9 +140,18 @@ public class GoogleSyncService {
         }
         if (existing.isPresent()) {
             Schedule s = existing.get();
+            // 충돌(1-7): 로컬 미전송 변경(PENDING)이 있는데 구글도 바뀜 → last-write-wins.
+            if (s.getSyncStatus() == SyncStatus.PENDING && localWinsOver(s, ev)) {
+                return Outcome.SKIPPED; // 로컬이 더 최신 → 보존, PENDING 유지(다음 push 가 구글로 전송)
+            }
+            boolean conflict = s.getSyncStatus() == SyncStatus.PENDING; // 구글 승(또는 동시) — 내용은 구글 채택
             s.applyGoogleEvent(m.title(), m.description(), m.location(),
                     m.startedAt(), m.endedAt(), m.startDate(), m.endDate(), m.allDay(), m.recurrenceRule());
-            s.markGoogleSynced(ev.id(), now);
+            if (conflict) {
+                s.markConflict(ev.id(), now); // 자동 해결하되 흔적 남김
+            } else {
+                s.markGoogleSynced(ev.id(), now);
+            }
             return Outcome.UPDATED;
         }
         Schedule created = new Schedule(familyId, m.title(), m.description(), m.location(),
@@ -150,5 +160,20 @@ public class GoogleSyncService {
         created.markGoogleSynced(ev.id(), now);
         scheduleRepository.save(created);
         return Outcome.CREATED;
+    }
+
+    /**
+     * 충돌 시 로컬 승리 여부 — 로컬 마지막 수정(updated_at)이 구글 측 수정(ev.updated)보다 나중이면 로컬 승.
+     * 구글 updated 가 없으면(드묾) 구글 우선으로 본다(보수적: 유입을 적용).
+     */
+    private boolean localWinsOver(Schedule s, GoogleEvent ev) {
+        if (ev.updated() == null) {
+            return false;
+        }
+        Instant localUpdated = s.getUpdatedAt();
+        if (localUpdated == null) {
+            return false;
+        }
+        return localUpdated.isAfter(Instant.parse(ev.updated()));
     }
 }

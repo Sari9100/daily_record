@@ -29,17 +29,20 @@ public class GoogleConnectService {
     private final GoogleOAuthClient oauthClient;
     private final TokenCipher tokenCipher;
     private final GoogleSyncStateRepository repository;
+    private final GooglePushChannelService channelService;
 
     public GoogleConnectService(GoogleProperties props,
                                 GoogleStateSigner stateSigner,
                                 GoogleOAuthClient oauthClient,
                                 TokenCipher tokenCipher,
-                                GoogleSyncStateRepository repository) {
+                                GoogleSyncStateRepository repository,
+                                GooglePushChannelService channelService) {
         this.props = props;
         this.stateSigner = stateSigner;
         this.oauthClient = oauthClient;
         this.tokenCipher = tokenCipher;
         this.repository = repository;
+        this.channelService = channelService;
     }
 
     /** 동의 화면 URL 발급 (현재 로그인 사용자 기준). */
@@ -63,19 +66,26 @@ public class GoogleConnectService {
         }
         byte[] encrypted = tokenCipher.encrypt(tokens.refreshToken());
 
-        repository.findByPersonIdAndGoogleCalendarId(personId, PRIMARY)
-                .ifPresentOrElse(
-                        s -> s.updateRefreshToken(encrypted),
-                        () -> repository.save(new GoogleSyncState(familyId, personId, PRIMARY, encrypted)));
+        GoogleSyncState syncState = repository.findByPersonIdAndGoogleCalendarId(personId, PRIMARY)
+                .map(s -> {
+                    s.updateRefreshToken(encrypted);
+                    return s;
+                })
+                .orElseGet(() -> repository.save(new GoogleSyncState(familyId, personId, PRIMARY, encrypted)));
+
+        // Phase 3: 푸시 채널 등록(활성화된 경우만 — 미설정이면 no-op, 폴링이 동기화를 책임진다).
+        channelService.ensureChannel(syncState);
     }
 
-    /** 연동 해제 — refresh token·sync token·채널 무효화(행은 이력으로 보존). */
+    /** 연동 해제 — 푸시 채널 stop 후 refresh token·sync token·채널 무효화(행은 이력으로 보존). */
     @Transactional
     public void disconnect() {
         AuthUser user = FamilyContext.require();
         repository.findByPersonIdAndGoogleCalendarId(user.personId(), PRIMARY)
-                .ifPresent(GoogleSyncState::disconnect);
-        // TODO(Phase 3): 푸시 채널 stop 호출
+                .ifPresent(s -> {
+                    channelService.stopChannel(s); // refresh token 살아있을 때 먼저 stop
+                    s.disconnect();
+                });
     }
 
     private void requireConfigured() {

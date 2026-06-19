@@ -75,7 +75,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/integrations/telegram/**").permitAll()
                         // 구글 OAuth 콜백: 브라우저 리디렉션(JWT 없음) → state HMAC 로 주체 검증
                         .requestMatchers(HttpMethod.GET, "/api/v1/integrations/google/callback").permitAll()
-                        // (Phase 3) 구글 푸시 webhook 도 추후 permitAll + 채널토큰 검증으로 추가
+                        // 구글 푸시 webhook(Phase 3): 구글 서버가 JWT 없이 POST → 채널토큰(X-Goog-Channel-Token) 으로 검증
+                        .requestMatchers(HttpMethod.POST, "/api/v1/integrations/google/notifications").permitAll()
                         .anyRequest().authenticated())
                 // 서비스 토큰 검증을 JWT 필터보다 먼저 (텔레그램 경로만 관여)
                 .addFilterBefore(new HermesServiceTokenFilter(hermesProperties.serviceToken(), objectMapper),
