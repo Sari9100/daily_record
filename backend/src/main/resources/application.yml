@@ -37,3 +37,12 @@ jwt:
 app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:8081,http://localhost:19006}
+
+  # 최초 부트스트랩 — DB 가 비어있을 때만 1회 시드(멱등). 자격증명은 .env 로만 주입(커밋 금지)
+  bootstrap:
+    enabled: ${BOOTSTRAP_ENABLED:true}
+    login-id: ${BOOTSTRAP_LOGIN_ID:}      # 미설정 시 시드 생략 (앱 기동은 정상)
+    password: ${BOOTSTRAP_PASSWORD:}      # 평문은 .env 에만. 해시는 런타임 생성
+    parent-name: ${BOOTSTRAP_PARENT_NAME:부모}
+    family-name: ${BOOTSTRAP_FAMILY_NAME:우리 가족}
+    timezone: ${BOOTSTRAP_TIMEZONE:Asia/Seoul}
