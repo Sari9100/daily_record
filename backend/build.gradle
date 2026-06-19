@@ -49,8 +49,28 @@ dependencies {
     // --- Test (버전은 Boot BOM 관리) ---
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
+
+    // --- 통합테스트(Testcontainers, Docker 필요) ---
+    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:mysql'
 }
 
+// 기본 test: 단위테스트만 (integration 태그 제외 → Docker 없는 개발 PC 에서 그린 유지)
 tasks.named('test') {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        excludeTags 'integration'
+    }
+}
+
+// 통합테스트: Docker 필요. Docker PC 에서 ./gradlew integrationTest 로 실행
+tasks.register('integrationTest', Test) {
+    description = '실 MySQL(Testcontainers) 통합테스트 — Docker 필요'
+    group = 'verification'
+    useJUnitPlatform {
+        includeTags 'integration'
+    }
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    shouldRunAfter('test')
 }
