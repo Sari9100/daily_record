@@ -32,6 +32,7 @@ jwt:
   refresh-secret: ${JWT_REFRESH_SECRET}
   access-ttl: PT30M                        # 30분
   refresh-ttl: P14D                        # 14일
+  refresh-grace: PT10S                     # 회전 직후 동시요청 레이스 유예(재사용 오탐 방지)
 
 # CORS 허용 오리진 (웹). 앱은 네이티브라 CORS 무관
 app:

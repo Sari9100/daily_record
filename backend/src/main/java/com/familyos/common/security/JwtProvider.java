@@ -78,6 +78,11 @@ public class JwtProvider {
         return new RefreshToken(token, jti, exp);
     }
 
+    /** Access 만료(초) — 로그인 응답의 expiresIn 용. */
+    public long accessTtlSeconds() {
+        return props.accessTtl().toSeconds();
+    }
+
     // ---- 검증/파싱 ----
 
     /**
