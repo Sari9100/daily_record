@@ -1,0 +1,13 @@
+# 시크릿/빌드 산출물 (CLAUDE.md 1-7: 시크릿 커밋 금지)
+.env
+*.env.local
+.DS_Store
+
+# node
+node_modules/
+mcp/node_modules/
+frontend/dist/
+
+# gradle/build
+backend/build/
+backend/.gradle/
