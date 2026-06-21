@@ -41,3 +41,4 @@ services:
 networks:
   stock-network-v2:
     external: true
+    name: stock-account-v2_stock-network-v2   # 기존 stock compose 가 만든 실제 네트워크명

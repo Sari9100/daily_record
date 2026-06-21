@@ -159,8 +159,20 @@ daily_record/
 
 ## 9. 후속/미완
 - **Phase 3 백엔드 일정 쓰기 엔드포인트** — ✅ 구현 완료(추가 파일만, 기존 무수정): `TelegramScheduleController`(POST/PUT/DELETE `/integrations/telegram/schedules`) + `TelegramScheduleService`(actingAs 패턴) + DTO 2종. 검증은 기존 `ScheduleService` 가 그대로 적용(family 격리·alive 422·VisibilityGuard 404·종일/시점 이원화). 컴파일 확인됨. (권한/격리 테스트 추가는 후속)
-- stock 측: 가계부 도구 3종 `@Component` 비활성, mcp-server ScheduleTools/Client 제거, schedule-service·ledger UI 컨테이너 폐기.
+- ✅ stock 측 정리(D4) 완료 — **stock 소스/컨테이너 무수정**으로 수행(rebuild 회피):
+  - 가계부 도구 비활성: stock-app-v2 `@Component` 대신 **Hermes default 프로필 `tools.include` 에서 가계부 6종 제외**(stock-account 12 selected). stock-app-v2 `/mcp` 자체는 그대로 두되 LLM 에 미노출.
+  - schedule Hermes 프로필 폐기(launchctl bootout, plist/프로필 보존이름변경).
+  - 잉여 컨테이너 폐기: schedule-service · mcp-server(8086, 사용처 없음) · ledger-app-v2 · (구)stock-ledger-ui → `restart=no`+stop, stock compose 에서 서비스 제거(백업).
+  - nginx stock 블록 `/ledger/`·`ledger-app-v2` upstream 제거(백업, restart).
+  - 롤백: 각 백업(.bak.familyos-*) 복원 + 컨테이너 재기동.
 - 구글 캘린더(docs 08): 폴링 우선, 푸시 webhook 은 공개 URL·Cloudflare 예외 후.
+
+### 구글 캘린더 설정 (컨테이너 — 실서비스 시 필수)
+컨테이너 `.env` 에 `GOOGLE_*` 누락 시: sync → **"토큰 복호화 실패"**(빈 `GOOGLE_TOKEN_ENC_KEY`), connect → OAuth URL 생성 불가(빈 `GOOGLE_CLIENT_ID`).
+필요 값: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_TOKEN_ENC_KEY`(Base64 32B), `GOOGLE_REDIRECT_URI=https://ledger.saristock.com/api/v1/integrations/google/callback`.
+- ★ `GOOGLE_REDIRECT_URI` 는 **Google Cloud Console > 사용자 인증 정보 > OAuth 클라이언트 > "승인된 리디렉션 URI"** 에 **전체 URL(https+경로) 그대로** 등록해야 함. 안 하면 `redirect_uri_mismatch`(400).
+- ⚠️ consent 화면의 **"승인된 도메인"** 칸은 `saristock.com` 만(스키마/경로 금지) — 리디렉션 URI 칸과 혼동 주의.
+- 연동 해제 시 `refresh_token_enc=NULL` → 재연결 필요. 재연결 후 폴링(15분)·수동 sync 정상.
 
 ## 10. 보안/시크릿
 - `.env` 커밋 금지(.gitignore). 시크릿 `openssl rand -hex 32`. JWT 2종/STORAGE_URL_SECRET/서비스토큰/DB비번 = 기계 생성.

@@ -26,6 +26,19 @@
 - family-os-api: 내부 8080 (nginx 라우팅; 디버그 시 8087 노출)
 - family-os-mcp: 호스트 8088 → 컨테이너 3000 (Hermes 접근)
 
+## 환경 설정 — .env 2 컨텍스트 (혼동 주의)
+
+이 레포에는 **목적이 다른 .env 가 둘** 있다. 섞지 말 것.
+
+| 파일 | 용도 | 실행 | DB 접속 | API base |
+|------|------|------|---------|----------|
+| **루트 `.env`** (← `.env.example`) | **docker-compose 배포** | `docker compose up` | `DB_HOST=mysql-server-v2:3306` (컨테이너명) | 도메인 `https://ledger.saristock.com/api/v1` |
+| **`backend/.env`** (← `backend/.env.example`) | **로컬 dev** | `./gradlew bootRun` | `localhost:3308` (호스트 노출 포트) | `localhost:8080` |
+
+- 컨테이너 내부에선 MySQL 을 **컨테이너명(mysql-server-v2)·내부포트(3306)** 로, 호스트 dev 에선 **localhost·노출포트(3308)** 로 접근한다(같은 DB, 경로만 다름).
+- 두 .env 모두 **커밋 금지**(.gitignore). 시크릿(JWT·STORAGE·서비스토큰)은 컨텍스트별로 따로 둔다.
+- `family-os-mcp` 는 컨테이너 내부에서 `FAMILYOS_API_BASE_URL=http://family-os-api:8080/api/v1` 로 api 를 부른다(루트 .env / compose). 로컬 dev 로 MCP 를 띄워 검증할 땐 `FAMILYOS_API_BASE_URL=http://localhost:8080/api/v1`.
+
 ## 주의
 - `.env` 는 커밋 금지(.gitignore 처리). 시크릿은 `openssl rand -hex 32`.
 - `HERMES_SERVICE_TOKEN` == `FAMILYOS_SERVICE_TOKEN` (api ↔ mcp 동일값).
