@@ -6,6 +6,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -65,16 +66,23 @@ public class GoogleOAuthClient {
     }
 
     private GoogleTokenResponse postToken(MultiValueMap<String, String> form) {
-        GoogleTokenResponse res = restClient.post()
-                .uri(TOKEN_URI)
-                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                .body(form)
-                .retrieve()
-                .body(GoogleTokenResponse.class);
-        if (res == null || res.accessToken() == null) {
-            throw new BusinessException("구글 토큰 발급에 실패했습니다.");
+        try {
+            GoogleTokenResponse res = restClient.post()
+                    .uri(TOKEN_URI)
+                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                    .body(form)
+                    .retrieve()
+                    .body(GoogleTokenResponse.class);
+            if (res == null || res.accessToken() == null) {
+                throw new BusinessException("구글 토큰 발급에 실패했습니다.");
+            }
+            return res;
+        } catch (HttpClientErrorException e) {
+            if (e.getResponseBodyAsString().contains("invalid_grant")) {
+                throw new GoogleTokenRevokedException();
+            }
+            throw new BusinessException("구글 토큰 요청 실패: " + e.getStatusCode());
         }
-        return res;
     }
 
     private String encode(String value) {

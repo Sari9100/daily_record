@@ -15,6 +15,7 @@ import com.familyos.integration.google.dto.GoogleSyncResult;
 import com.familyos.integration.google.dto.MappedSchedule;
 import com.familyos.integration.google.entity.GoogleSyncState;
 import com.familyos.integration.google.oauth.GoogleOAuthClient;
+import com.familyos.integration.google.oauth.GoogleTokenRevokedException;
 import com.familyos.integration.google.repository.GoogleSyncStateRepository;
 import com.familyos.schedule.entity.Schedule;
 import com.familyos.schedule.entity.ScheduleType;
@@ -65,7 +66,7 @@ public class GoogleSyncService {
     }
 
     /** 현재 로그인 사용자의 구글 캘린더 동기화(수동 트리거). */
-    @Transactional
+    @Transactional(noRollbackFor = BusinessException.class)
     public GoogleSyncResult syncForCurrentUser() {
         AuthUser user = FamilyContext.require();
         GoogleSyncState state = syncStateRepository
@@ -76,7 +77,13 @@ public class GoogleSyncService {
         }
 
         String refreshToken = tokenCipher.decrypt(state.getRefreshTokenEnc());
-        String accessToken = oauthClient.refreshAccessToken(refreshToken).accessToken();
+        String accessToken;
+        try {
+            accessToken = oauthClient.refreshAccessToken(refreshToken).accessToken();
+        } catch (GoogleTokenRevokedException e) {
+            state.disconnect();
+            throw new BusinessException("구글 연동 토큰이 만료되었습니다. 다시 구글 계정을 연결해주세요.");
+        }
         Long familyId = user.familyId();
 
         if (state.getSyncToken() == null) {
