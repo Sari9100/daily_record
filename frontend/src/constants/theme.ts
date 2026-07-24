@@ -9,11 +9,21 @@ import { Platform } from 'react-native';
 
 export const Colors = {
   light: {
-    text: '#000000',
+    text: '#202124',
     background: '#ffffff',
     backgroundElement: '#F0F0F3',
     backgroundSelected: '#E0E1E6',
     textSecondary: '#60646C',
+    textMuted: '#9aa0a6',
+    border: '#dadce0',
+    surfaceMuted: '#f1f3f4',
+    primary: '#1a73e8',
+    primarySurface: '#e8f0fe',
+    danger: '#d93025',
+    dangerSurface: '#fce8e6',
+    success: '#188038',
+    successSurface: '#e6f4ea',
+    overlay: 'rgba(0,0,0,0.35)',
   },
   dark: {
     text: '#ffffff',
@@ -21,7 +31,24 @@ export const Colors = {
     backgroundElement: '#212225',
     backgroundSelected: '#2E3135',
     textSecondary: '#B0B4BA',
+    textMuted: '#8a8f98',
+    border: '#3c4043',
+    surfaceMuted: '#1c1d1f',
+    primary: '#8ab4f8',
+    primarySurface: '#1d2b3f',
+    danger: '#f28b82',
+    dangerSurface: '#3d2320',
+    success: '#81c995',
+    successSurface: '#1e3324',
+    overlay: 'rgba(0,0,0,0.6)',
   },
+} as const;
+
+export const Radius = {
+  sm: 8,
+  md: 10,
+  lg: 12,
+  pill: 20,
 } as const;
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;

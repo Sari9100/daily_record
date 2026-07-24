@@ -62,6 +62,10 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Long> {
                         and (:fromDate is null or t.startDate >= :fromDate)
                         and (:toDate is null or t.startDate <= :toDate))
                   )
+              and (:q is null or :q = ''
+                    or lower(t.title) like lower(concat('%', :q, '%'))
+                    or lower(t.description) like lower(concat('%', :q, '%'))
+                    or lower(t.location) like lower(concat('%', :q, '%')))
               and (
                     t.visibility = com.familyos.common.domain.Visibility.FAMILY
                     or (t.visibility = com.familyos.common.domain.Visibility.PARENTS and :isParent = true)
@@ -83,5 +87,6 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Long> {
                           @Param("from") @Nullable Instant from,
                           @Param("to") @Nullable Instant to,
                           @Param("fromDate") @Nullable LocalDate fromDate,
-                          @Param("toDate") @Nullable LocalDate toDate);
+                          @Param("toDate") @Nullable LocalDate toDate,
+                          @Param("q") @Nullable String q);
 }

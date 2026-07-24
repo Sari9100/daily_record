@@ -2,6 +2,7 @@ package com.familyos.ledger.controller;
 
 import com.familyos.common.web.ApiResponse;
 import com.familyos.common.web.PageResponse;
+import com.familyos.ledger.dto.LinkTransactionsToCollectionRequest;
 import com.familyos.ledger.dto.StatisticsResponse;
 import com.familyos.ledger.dto.TransactionRequest;
 import com.familyos.ledger.dto.TransactionResponse;
@@ -43,10 +44,11 @@ public class TransactionController {
             @RequestParam(required = false) @Nullable Instant to,
             @RequestParam(required = false) @Nullable TransactionType type,
             @RequestParam(required = false) @Nullable Long categoryId,
+            @RequestParam(required = false) @Nullable Long collectionId,
             @RequestParam(required = false) @Nullable String scope,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return ApiResponse.ok(transactionService.list(from, to, type, categoryId, scope, page, size));
+        return ApiResponse.ok(transactionService.list(from, to, type, categoryId, collectionId, scope, page, size));
     }
 
     /**
@@ -66,6 +68,12 @@ public class TransactionController {
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<TransactionResponse> create(@Valid @RequestBody TransactionRequest request) {
         return ApiResponse.ok(transactionService.create(request));
+    }
+
+    /** 가계부 다중선택 → 묶음 일괄연결. */
+    @PostMapping("/link-collection")
+    public ApiResponse<Integer> linkCollection(@Valid @RequestBody LinkTransactionsToCollectionRequest request) {
+        return ApiResponse.ok(transactionService.linkToCollection(request.transactionIds(), request.collectionId()));
     }
 
     @PutMapping("/{id}")

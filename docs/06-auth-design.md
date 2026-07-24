@@ -213,6 +213,7 @@ VisibilityGuard.assertCanEdit(resource, authUser);    // 보통 author만, PAREN
 - 로그인 실패 처리: 횟수 제한(선택, MVP 후순위)
 - 자녀 계정 생성: PARENT가 `POST /family/members/{personId}/account` — 기존 Person에 UserAccount 연결
 - UserAccount.login_id UNIQUE는 **생성컬럼 alive_uk 방식** (재가입 허용, 03-1-4 참조)
+- 본인 비밀번호 변경: `PUT /auth/password`(2026-07 리뉴얼 추가) — 현재 비밀번호 검증 후 변경, 성공 시 `revokeAllByAccountId`로 해당 계정의 모든 refresh token 폐기(현재 기기 포함 재로그인 필요). `UserAccount.changePassword()`는 원래부터 있었으나 미배선 상태였음.
 
 ### 6-1. PersonSetting 생성 시점 (확정)
 - 별도 생성 단계 없음 — **lazy**: `GET /me/settings`는 행이 없으면 **기본값 응답**

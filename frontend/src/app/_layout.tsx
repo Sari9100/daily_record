@@ -43,22 +43,22 @@ function AuthGate() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen
         name="transaction/new"
-        options={{ presentation: 'modal', headerShown: true, title: '거래 입력' }}
+        options={{ presentation: 'transparentModal', animation: 'slide_from_right', headerShown: false }}
       />
       <Stack.Screen
         name="transaction/[id]"
-        options={{ presentation: 'modal', headerShown: true, title: '거래 편집' }}
+        options={{ presentation: 'transparentModal', animation: 'slide_from_right', headerShown: false }}
       />
       <Stack.Screen name="accounts" options={{ headerShown: true, title: '계좌 관리' }} />
       <Stack.Screen name="categories" options={{ headerShown: true, title: '카테고리 관리' }} />
       <Stack.Screen name="statistics" options={{ headerShown: true, title: '통계' }} />
       <Stack.Screen
         name="schedule/new"
-        options={{ presentation: 'modal', headerShown: true, title: '일정 추가' }}
+        options={{ presentation: 'transparentModal', animation: 'slide_from_right', headerShown: false }}
       />
       <Stack.Screen
         name="schedule/[id]"
-        options={{ presentation: 'modal', headerShown: true, title: '일정 편집' }}
+        options={{ presentation: 'transparentModal', animation: 'slide_from_right', headerShown: false }}
       />
       <Stack.Screen
         name="diary/new"
@@ -73,6 +73,7 @@ function AuthGate() {
       <Stack.Screen name="family" options={{ headerShown: true, title: '가족·구성원' }} />
       <Stack.Screen name="integrations" options={{ headerShown: true, title: '외부연동' }} />
       <Stack.Screen name="settings" options={{ headerShown: true, title: '개인 설정' }} />
+      <Stack.Screen name="change-password" options={{ headerShown: true, title: '비밀번호 변경' }} />
     </Stack>
   );
 }

@@ -85,6 +85,7 @@ public class TransactionService {
 
     public PageResponse<TransactionResponse> list(@Nullable Instant from, @Nullable Instant to,
                                                   @Nullable TransactionType type, @Nullable Long categoryId,
+                                                  @Nullable Long collectionId,
                                                   @Nullable String scope, int page, int size) {
         AuthUser user = FamilyContext.require();
         Visibility scopeVisibility = parseScope(scope);
@@ -92,7 +93,7 @@ public class TransactionService {
 
         Page<Transaction> result = transactionRepository.search(
                 user.familyId(), user.personId(), user.isParent(),
-                from, to, type, categoryId, scopeVisibility, pageable);
+                from, to, type, categoryId, collectionId, scopeVisibility, pageable);
 
         Map<Long, Account> accounts = loadAccounts(user.familyId(), result.getContent());
         Map<Long, Category> categories = loadCategories(user.familyId(), result.getContent());
@@ -159,6 +160,30 @@ public class TransactionService {
         return toResponse(tx, user,
                 loadAccounts(familyId, List.of(tx)), loadCategories(familyId, List.of(tx)),
                 loadTagNames(familyId, List.of(tx)));
+    }
+
+    /**
+     * 다중선택한 거래를 한 묶음에 일괄 연결(가계부 다중선택 → 묶음 연결). 각 거래는 작성자 본인만(VisibilityGuard).
+     * 다른 필드는 건드리지 않음 — 마스킹된 클라 데이터로 되돌려쓰는 위험을 피하기 위해 서버가 로드한 엔티티만 사용.
+     */
+    @Transactional
+    public int linkToCollection(List<Long> transactionIds, @Nullable Long collectionId) {
+        AuthUser user = FamilyContext.require();
+        Long familyId = user.familyId();
+
+        if (collectionId != null && collectionRepository.findByIdAndFamilyId(collectionId, familyId).isEmpty()) {
+            throw new BusinessException("묶음(collection)이 존재하지 않거나 삭제되었습니다.");
+        }
+
+        int updated = 0;
+        for (Long id : transactionIds) {
+            Transaction tx = transactionRepository.findByIdAndFamilyId(id, familyId)
+                    .orElseThrow(() -> NotFoundException.of("거래", id));
+            visibilityGuard.assertCanEdit(tx, user);
+            tx.changeCollection(collectionId);
+            updated++;
+        }
+        return updated;
     }
 
     @Transactional

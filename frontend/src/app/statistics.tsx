@@ -4,6 +4,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { endOfMonth, endOfYear, startOfMonth, startOfYear, subMonths } from 'date-fns';
 
 import { ChipGroup, type ChipOption } from '@/components/ChipGroup';
+import { Card } from '@/components/ui';
+import { Radius, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { useStatistics } from '@/api/ledger';
 import type { CategoryStat, CategoryType, StatScope } from '@/domain/ledger';
 
@@ -29,6 +32,7 @@ function won(n: number): string {
 }
 
 export default function StatisticsScreen() {
+  const theme = useTheme();
   const [period, setPeriod] = useState<Period>('thisMonth');
   const [scope, setScope] = useState<StatScope>('ALL');
   const [catType, setCatType] = useState<CategoryType>('EXPENSE');
@@ -62,7 +66,7 @@ export default function StatisticsScreen() {
   const net = (data?.totalIncome ?? 0) - (data?.totalExpense ?? 0);
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.container}>
         <ChipGroup options={PERIOD_OPTIONS} value={period} onChange={setPeriod} />
         <ChipGroup options={SCOPE_OPTIONS} value={scope} onChange={setScope} />
@@ -72,22 +76,24 @@ export default function StatisticsScreen() {
             <ActivityIndicator />
           </View>
         ) : isError ? (
-          <Text style={styles.error}>{error instanceof Error ? error.message : '통계를 불러오지 못했습니다.'}</Text>
+          <Text style={{ color: theme.danger, fontSize: 14, paddingVertical: 20, textAlign: 'center' }}>
+            {error instanceof Error ? error.message : '통계를 불러오지 못했습니다.'}
+          </Text>
         ) : (
           <>
             <View style={styles.cards}>
-              <View style={[styles.card, styles.cardIncome]}>
-                <Text style={styles.cardLabel}>수입</Text>
-                <Text style={[styles.cardValue, { color: '#188038' }]}>{won(data?.totalIncome ?? 0)}</Text>
-              </View>
-              <View style={[styles.card, styles.cardExpense]}>
-                <Text style={styles.cardLabel}>지출</Text>
-                <Text style={[styles.cardValue, { color: '#d93025' }]}>{won(data?.totalExpense ?? 0)}</Text>
-              </View>
+              <Card style={[styles.card, { backgroundColor: theme.successSurface, borderColor: theme.successSurface }]}>
+                <Text style={[styles.cardLabel, { color: theme.textSecondary }]}>수입</Text>
+                <Text style={[styles.cardValue, { color: theme.success }]}>{won(data?.totalIncome ?? 0)}</Text>
+              </Card>
+              <Card style={[styles.card, { backgroundColor: theme.dangerSurface, borderColor: theme.dangerSurface }]}>
+                <Text style={[styles.cardLabel, { color: theme.textSecondary }]}>지출</Text>
+                <Text style={[styles.cardValue, { color: theme.danger }]}>{won(data?.totalExpense ?? 0)}</Text>
+              </Card>
             </View>
             <View style={styles.netRow}>
-              <Text style={styles.netLabel}>순액</Text>
-              <Text style={[styles.netValue, { color: net >= 0 ? '#188038' : '#d93025' }]}>
+              <Text style={[styles.netLabel, { color: theme.textSecondary }]}>순액</Text>
+              <Text style={[styles.netValue, { color: net >= 0 ? theme.success : theme.danger }]}>
                 {net >= 0 ? '+' : ''}
                 {won(net)}
               </Text>
@@ -95,25 +101,27 @@ export default function StatisticsScreen() {
 
             <View style={styles.section}>
               <View style={styles.sectionHead}>
-                <Text style={styles.sectionTitle}>카테고리별</Text>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>카테고리별</Text>
                 <ChipGroup options={CAT_TYPE_OPTIONS} value={catType} onChange={setCatType} />
               </View>
               {categories.length === 0 ? (
-                <Text style={styles.empty}>해당 기간 {catType === 'EXPENSE' ? '지출' : '수입'} 내역이 없어요.</Text>
+                <Text style={{ color: theme.textSecondary, fontSize: 14 }}>
+                  해당 기간 {catType === 'EXPENSE' ? '지출' : '수입'} 내역이 없어요.
+                </Text>
               ) : (
                 categories.map((c) => (
                   <View key={c.categoryId} style={styles.catRow}>
                     <View style={styles.catTop}>
-                      <Text style={styles.catName}>{c.name ?? '(미분류)'}</Text>
-                      <Text style={styles.catAmount}>{won(c.amount)}</Text>
+                      <Text style={[styles.catName, { color: theme.text }]}>{c.name ?? '(미분류)'}</Text>
+                      <Text style={[styles.catAmount, { color: theme.text }]}>{won(c.amount)}</Text>
                     </View>
-                    <View style={styles.barTrack}>
+                    <View style={[styles.barTrack, { backgroundColor: theme.surfaceMuted }]}>
                       <View
                         style={[
                           styles.barFill,
                           {
                             width: `${maxCat > 0 ? (c.amount / maxCat) * 100 : 0}%`,
-                            backgroundColor: catType === 'EXPENSE' ? '#d93025' : '#188038',
+                            backgroundColor: catType === 'EXPENSE' ? theme.danger : theme.success,
                           },
                         ]}
                       />
@@ -125,12 +133,12 @@ export default function StatisticsScreen() {
 
             {(data?.byMonth.length ?? 0) > 1 && (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>월별</Text>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>월별</Text>
                 {data?.byMonth.map((m) => (
                   <View key={m.month} style={styles.monthRow}>
-                    <Text style={styles.monthLabel}>{m.month}</Text>
-                    <Text style={[styles.monthVal, { color: '#188038' }]}>+{won(m.income)}</Text>
-                    <Text style={[styles.monthVal, { color: '#d93025' }]}>-{won(m.expense)}</Text>
+                    <Text style={[styles.monthLabel, { color: theme.textSecondary }]}>{m.month}</Text>
+                    <Text style={[styles.monthVal, { color: theme.success }]}>+{won(m.income)}</Text>
+                    <Text style={[styles.monthVal, { color: theme.danger }]}>-{won(m.expense)}</Text>
                   </View>
                 ))}
               </View>
@@ -143,30 +151,26 @@ export default function StatisticsScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#fff' },
-  container: { padding: 16, gap: 16 },
+  safe: { flex: 1 },
+  container: { padding: Spacing.three, gap: Spacing.three },
   center: { paddingVertical: 40, alignItems: 'center' },
-  error: { color: '#d93025', fontSize: 14, paddingVertical: 20, textAlign: 'center' },
   cards: { flexDirection: 'row', gap: 12 },
-  card: { flex: 1, borderRadius: 12, padding: 16, gap: 6 },
-  cardIncome: { backgroundColor: '#e6f4ea' },
-  cardExpense: { backgroundColor: '#fce8e6' },
-  cardLabel: { fontSize: 13, color: '#3c4043', fontWeight: '600' },
+  card: { flex: 1, padding: 16, gap: 6, borderWidth: 0 },
+  cardLabel: { fontSize: 13, fontWeight: '600' },
   cardValue: { fontSize: 20, fontWeight: '700' },
   netRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 4 },
-  netLabel: { fontSize: 15, color: '#3c4043', fontWeight: '600' },
+  netLabel: { fontSize: 15, fontWeight: '600' },
   netValue: { fontSize: 18, fontWeight: '700' },
   section: { gap: 12, paddingTop: 8 },
   sectionHead: { gap: 10 },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#202124' },
-  empty: { color: '#5f6368', fontSize: 14 },
+  sectionTitle: { fontSize: 16, fontWeight: '700' },
   catRow: { gap: 6 },
   catTop: { flexDirection: 'row', justifyContent: 'space-between' },
-  catName: { fontSize: 15, color: '#202124' },
-  catAmount: { fontSize: 15, color: '#202124', fontWeight: '600' },
-  barTrack: { height: 8, borderRadius: 4, backgroundColor: '#f1f3f4', overflow: 'hidden' },
-  barFill: { height: 8, borderRadius: 4 },
+  catName: { fontSize: 15 },
+  catAmount: { fontSize: 15, fontWeight: '600' },
+  barTrack: { height: 8, borderRadius: Radius.sm / 2, overflow: 'hidden' },
+  barFill: { height: 8, borderRadius: Radius.sm / 2 },
   monthRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, gap: 12 },
-  monthLabel: { flex: 1, fontSize: 14, color: '#3c4043', fontWeight: '600' },
+  monthLabel: { flex: 1, fontSize: 14, fontWeight: '600' },
   monthVal: { fontSize: 13, fontWeight: '600' },
 });

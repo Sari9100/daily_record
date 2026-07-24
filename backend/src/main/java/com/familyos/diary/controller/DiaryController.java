@@ -41,8 +41,10 @@ public class DiaryController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) @Nullable LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) @Nullable LocalDate to,
             @RequestParam(required = false) @Nullable String view,
-            @RequestParam(required = false) @Nullable String scope) {
-        return ApiResponse.ok(diaryService.list(from, to, scope));
+            @RequestParam(required = false) @Nullable String scope,
+            @RequestParam(required = false) @Nullable Long collectionId,
+            @RequestParam(required = false) @Nullable String q) {
+        return ApiResponse.ok(diaryService.list(from, to, scope, collectionId, q));
     }
 
     @PostMapping

@@ -5,6 +5,7 @@ export type Collection = {
   coverPhotoId: number | null;
   startedAt: string | null;
   endedAt: string | null;
+  tags: string[];
 };
 
 export type CollectionCreate = {
@@ -12,6 +13,7 @@ export type CollectionCreate = {
   description?: string | null;
   startedAt?: string | null;
   endedAt?: string | null;
+  tagIds?: number[];
 };
 
 export type CollectionSummary = {

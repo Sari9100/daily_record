@@ -1,18 +1,12 @@
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ChipGroup, type ChipOption } from '@/components/ChipGroup';
+import { BottomSheetModal, Button, Fab, ListRow, TextField } from '@/components/ui';
+import { Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { useFamilyMembers } from '@/api/schedule';
 import { useAddMember, useCreateMemberAccount } from '@/api/family';
 import { useAuthStore } from '@/store/auth';
@@ -25,6 +19,7 @@ const ROLE_OPTIONS: ChipOption<FamilyRole>[] = [
 ];
 
 export default function FamilyScreen() {
+  const theme = useTheme();
   const isParent = useAuthStore((s) => s.me?.role === 'PARENT');
   const membersQ = useFamilyMembers();
   const addMut = useAddMember();
@@ -84,7 +79,7 @@ export default function FamilyScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]} edges={['bottom']}>
       {membersQ.isLoading ? (
         <View style={styles.center}>
           <ActivityIndicator />
@@ -93,105 +88,81 @@ export default function FamilyScreen() {
         <FlatList
           data={membersQ.data ?? []}
           keyExtractor={(m) => String(m.personId)}
-          ItemSeparatorComponent={() => <View style={styles.sep} />}
+          ItemSeparatorComponent={() => <View style={[styles.sep, { backgroundColor: theme.surfaceMuted }]} />}
           contentContainerStyle={styles.list}
           renderItem={({ item }) => (
-            <View style={styles.row}>
-              <View style={styles.rowLeft}>
-                <Text style={styles.name}>{item.name}</Text>
-                <Text style={styles.role}>
-                  {item.role === 'PARENT' ? '부모' : '자녀'}
-                  {item.hasAccount ? '' : ' · 계정없음'}
-                </Text>
-              </View>
-              {isParent && !item.hasAccount && (
-                <Pressable style={styles.accountBtn} onPress={() => { setAccountFor(item); setError(null); }}>
-                  <Text style={styles.accountBtnText}>계정 만들기</Text>
-                </Pressable>
-              )}
-            </View>
+            <ListRow
+              title={item.name}
+              subtitle={`${item.role === 'PARENT' ? '부모' : '자녀'}${item.hasAccount ? '' : ' · 계정없음'}`}
+              trailing={
+                isParent && !item.hasAccount ? (
+                  <Button
+                    label="계정 만들기"
+                    variant="outline"
+                    onPress={() => {
+                      setAccountFor(item);
+                      setError(null);
+                    }}
+                    style={styles.accountBtn}
+                  />
+                ) : undefined
+              }
+            />
           )}
         />
       )}
 
       {isParent && (
-        <Pressable style={styles.fab} onPress={() => { setMemberOpen(true); setError(null); }}>
-          <Ionicons name="person-add" size={24} color="#fff" />
-        </Pressable>
+        <Fab
+          icon="person-add"
+          onPress={() => {
+            setMemberOpen(true);
+            setError(null);
+          }}
+        />
       )}
 
-      {/* 구성원 추가 */}
-      <Modal visible={memberOpen} animationType="slide" transparent onRequestClose={() => setMemberOpen(false)}>
-        <View style={styles.backdrop}>
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>구성원 추가</Text>
-            <Text style={styles.label}>이름</Text>
-            <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="이름" placeholderTextColor="#9aa0a6" />
-            <Text style={styles.label}>역할</Text>
-            <ChipGroup options={ROLE_OPTIONS} value={role} onChange={setRole} />
-            <Text style={styles.label}>생년월일 (선택, YYYY-MM-DD)</Text>
-            <TextInput style={styles.input} value={birthDate} onChangeText={setBirthDate} placeholder="2018-03-01" placeholderTextColor="#9aa0a6" autoCapitalize="none" />
-            {error && <Text style={styles.error}>{error}</Text>}
-            <View style={styles.actions}>
-              <Pressable style={[styles.btn, styles.cancel]} onPress={() => setMemberOpen(false)}>
-                <Text style={styles.cancelText}>취소</Text>
-              </Pressable>
-              <Pressable style={[styles.btn, styles.save, addMut.isPending && styles.disabled]} disabled={addMut.isPending} onPress={submitMember}>
-                {addMut.isPending ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveText}>추가</Text>}
-              </Pressable>
-            </View>
-          </View>
+      <BottomSheetModal visible={memberOpen} onClose={() => setMemberOpen(false)} title="구성원 추가">
+        <TextField label="이름" value={name} onChangeText={setName} placeholder="이름" />
+        <Text style={[styles.label, { color: theme.textSecondary }]}>역할</Text>
+        <ChipGroup options={ROLE_OPTIONS} value={role} onChange={setRole} />
+        <TextField
+          label="생년월일 (선택, YYYY-MM-DD)"
+          value={birthDate}
+          onChangeText={setBirthDate}
+          placeholder="2018-03-01"
+          autoCapitalize="none"
+        />
+        {error && <Text style={{ color: theme.danger, fontSize: 14, marginTop: 4 }}>{error}</Text>}
+        <View style={styles.actions}>
+          <Button label="취소" variant="outline" onPress={() => setMemberOpen(false)} style={styles.flexBtn} />
+          <Button label="추가" onPress={submitMember} loading={addMut.isPending} disabled={addMut.isPending} style={styles.flexBtn} />
         </View>
-      </Modal>
+      </BottomSheetModal>
 
-      {/* 계정 만들기 */}
-      <Modal visible={accountFor != null} animationType="slide" transparent onRequestClose={() => setAccountFor(null)}>
-        <View style={styles.backdrop}>
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>{accountFor?.name} 계정 만들기</Text>
-            <Text style={styles.label}>로그인 아이디</Text>
-            <TextInput style={styles.input} value={loginId} onChangeText={setLoginId} placeholder="loginId" placeholderTextColor="#9aa0a6" autoCapitalize="none" autoCorrect={false} />
-            <Text style={styles.label}>비밀번호 (8자 이상)</Text>
-            <TextInput style={styles.input} value={password} onChangeText={setPassword} placeholder="password" placeholderTextColor="#9aa0a6" secureTextEntry />
-            {error && <Text style={styles.error}>{error}</Text>}
-            <View style={styles.actions}>
-              <Pressable style={[styles.btn, styles.cancel]} onPress={() => setAccountFor(null)}>
-                <Text style={styles.cancelText}>취소</Text>
-              </Pressable>
-              <Pressable style={[styles.btn, styles.save, accountMut.isPending && styles.disabled]} disabled={accountMut.isPending} onPress={submitAccount}>
-                {accountMut.isPending ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveText}>생성</Text>}
-              </Pressable>
-            </View>
-          </View>
+      <BottomSheetModal
+        visible={accountFor != null}
+        onClose={() => setAccountFor(null)}
+        title={`${accountFor?.name ?? ''} 계정 만들기`}>
+        <TextField label="로그인 아이디" value={loginId} onChangeText={setLoginId} placeholder="loginId" autoCapitalize="none" autoCorrect={false} />
+        <TextField label="비밀번호 (8자 이상)" value={password} onChangeText={setPassword} placeholder="password" secureTextEntry />
+        {error && <Text style={{ color: theme.danger, fontSize: 14, marginTop: 4 }}>{error}</Text>}
+        <View style={styles.actions}>
+          <Button label="취소" variant="outline" onPress={() => setAccountFor(null)} style={styles.flexBtn} />
+          <Button label="생성" onPress={submitAccount} loading={accountMut.isPending} disabled={accountMut.isPending} style={styles.flexBtn} />
         </View>
-      </Modal>
+      </BottomSheetModal>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#fff' },
+  safe: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  list: { padding: 16 },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14 },
-  rowLeft: { gap: 3 },
-  name: { fontSize: 16, color: '#202124', fontWeight: '500' },
-  role: { fontSize: 13, color: '#5f6368' },
-  accountBtn: { borderWidth: 1, borderColor: '#1a73e8', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8 },
-  accountBtnText: { color: '#1a73e8', fontSize: 13, fontWeight: '600' },
-  sep: { height: 1, backgroundColor: '#f1f3f4' },
-  fab: { position: 'absolute', right: 20, bottom: 24, width: 56, height: 56, borderRadius: 28, backgroundColor: '#1a73e8', alignItems: 'center', justifyContent: 'center', elevation: 4 },
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-end' },
-  card: { backgroundColor: '#fff', borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 20, gap: 8 },
-  cardTitle: { fontSize: 18, fontWeight: '700', color: '#202124', marginBottom: 4 },
-  label: { fontSize: 13, fontWeight: '600', color: '#3c4043', marginTop: 6 },
-  input: { borderWidth: 1, borderColor: '#dadce0', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, color: '#202124' },
-  error: { color: '#d93025', fontSize: 14, marginTop: 4 },
+  list: { padding: Spacing.three },
+  sep: { height: 1 },
+  accountBtn: { paddingVertical: 8, paddingHorizontal: 12 },
+  label: { fontSize: 13, fontWeight: '600', marginTop: 6 },
   actions: { flexDirection: 'row', gap: 12, marginTop: 14 },
-  btn: { flex: 1, borderRadius: 10, paddingVertical: 14, alignItems: 'center' },
-  cancel: { borderWidth: 1, borderColor: '#dadce0' },
-  cancelText: { color: '#3c4043', fontSize: 16, fontWeight: '600' },
-  save: { backgroundColor: '#1a73e8' },
-  saveText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  disabled: { opacity: 0.6 },
+  flexBtn: { flex: 1 },
 });

@@ -1,19 +1,12 @@
 import { type ReactNode, useState } from 'react';
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { format } from 'date-fns';
 
 import { ChipGroup, type ChipOption } from '@/components/ChipGroup';
 import { CollectionPicker } from '@/components/CollectionPicker';
+import { Button, Chip, TextField } from '@/components/ui';
+import { Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { useFamilyMembers } from '@/api/schedule';
 import type { Diary, DiaryCreate } from '@/domain/diary';
 import type { Visibility } from '@/domain/types';
@@ -35,7 +28,8 @@ export function DiaryForm({
   deleting,
   children,
 }: {
-  initial?: Diary;
+  /** 편집 시 전체 Diary, 신규 작성 시 collectionId 등 일부 필드만 prefill 가능. */
+  initial?: Partial<Diary>;
   submitting: boolean;
   submitLabel: string;
   onSubmit: (body: DiaryCreate) => Promise<void>;
@@ -43,6 +37,7 @@ export function DiaryForm({
   deleting?: boolean;
   children?: ReactNode;
 }) {
+  const theme = useTheme();
   const membersQ = useFamilyMembers();
   const [title, setTitle] = useState(initial?.title ?? '');
   const [content, setContent] = useState(initial?.content ?? '');
@@ -85,26 +80,20 @@ export function DiaryForm({
   };
 
   return (
-    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={[styles.flex, { backgroundColor: theme.background }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <Field label="제목 (선택)">
-          <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="제목" placeholderTextColor="#9aa0a6" />
-        </Field>
+        <TextField label="제목 (선택)" value={title} onChangeText={setTitle} placeholder="제목" />
 
-        <Field label="내용">
-          <TextInput
-            style={[styles.input, styles.multiline]}
-            value={content}
-            onChangeText={setContent}
-            placeholder="오늘의 기록"
-            placeholderTextColor="#9aa0a6"
-            multiline
-          />
-        </Field>
+        <TextField
+          label="내용"
+          value={content}
+          onChangeText={setContent}
+          placeholder="오늘의 기록"
+          multiline
+          style={styles.multiline}
+        />
 
-        <Field label="날짜 (YYYY-MM-DD)">
-          <TextInput style={styles.input} value={recordedOn} onChangeText={setRecordedOn} placeholder="2026-06-20" placeholderTextColor="#9aa0a6" autoCapitalize="none" />
-        </Field>
+        <TextField label="날짜 (YYYY-MM-DD)" value={recordedOn} onChangeText={setRecordedOn} placeholder="2026-06-20" autoCapitalize="none" />
 
         <Field label="공개 범위">
           <ChipGroup options={VISIBILITY_OPTIONS} value={visibility} onChange={setVisibility} />
@@ -113,67 +102,45 @@ export function DiaryForm({
         {visibility === 'SHARED_PERSONAL' && (
           <Field label="대상 (subject)">
             <View style={styles.chips}>
-              {(membersQ.data ?? []).map((m) => {
-                const on = subjects.has(m.personId);
-                return (
-                  <Pressable key={m.personId} onPress={() => toggleSubject(m.personId)} style={[styles.chip, on && styles.chipOn]}>
-                    <Text style={[styles.chipText, on && styles.chipTextOn]}>{m.name}</Text>
-                  </Pressable>
-                );
-              })}
+              {(membersQ.data ?? []).map((m) => (
+                <Chip key={m.personId} label={m.name} selected={subjects.has(m.personId)} onPress={() => toggleSubject(m.personId)} />
+              ))}
             </View>
           </Field>
         )}
 
-        <Field label="묶음 (선택)">
-          <CollectionPicker value={collectionId} onChange={setCollectionId} />
+        <Field label="묶음 (선택, 일정에서 생성)">
+          <CollectionPicker value={collectionId} onChange={setCollectionId} allowCreate={false} />
         </Field>
 
-        {error && <Text style={styles.error}>{error}</Text>}
+        {error && <Text style={{ color: theme.danger, fontSize: 14 }}>{error}</Text>}
 
-        <Pressable style={[styles.btn, styles.save, submitting && styles.disabled]} disabled={submitting} onPress={submit}>
-          {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveText}>{submitLabel}</Text>}
-        </Pressable>
+        <Button label={submitLabel} onPress={submit} loading={submitting} disabled={submitting} />
 
         {/* 사진 섹션 등 추가 영역(편집 화면에서 주입) */}
         {children}
 
-        {onDelete && (
-          <Pressable style={[styles.btn, styles.delete, deleting && styles.disabled]} disabled={deleting} onPress={onDelete}>
-            {deleting ? <ActivityIndicator color="#d93025" /> : <Text style={styles.deleteText}>삭제</Text>}
-          </Pressable>
-        )}
+        {onDelete && <Button label="삭제" variant="danger" onPress={onDelete} loading={deleting} disabled={deleting} />}
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
+  const theme = useTheme();
   return (
     <View style={styles.field}>
-      <Text style={styles.label}>{label}</Text>
+      <Text style={[styles.label, { color: theme.textSecondary }]}>{label}</Text>
       {children}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: '#fff' },
-  container: { padding: 20, gap: 18 },
-  field: { gap: 8 },
-  label: { fontSize: 13, fontWeight: '600', color: '#3c4043' },
-  input: { borderWidth: 1, borderColor: '#dadce0', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, color: '#202124' },
+  flex: { flex: 1 },
+  container: { padding: Spacing.three, gap: Spacing.four - 6 },
+  field: { gap: Spacing.two },
+  label: { fontSize: 13, fontWeight: '600' },
   multiline: { minHeight: 120, textAlignVertical: 'top' },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 20, borderWidth: 1, borderColor: '#dadce0', backgroundColor: '#fff' },
-  chipOn: { backgroundColor: '#1a73e8', borderColor: '#1a73e8' },
-  chipText: { fontSize: 14, color: '#3c4043' },
-  chipTextOn: { color: '#fff', fontWeight: '600' },
-  error: { color: '#d93025', fontSize: 14 },
-  btn: { borderRadius: 10, paddingVertical: 14, alignItems: 'center' },
-  save: { backgroundColor: '#1a73e8' },
-  saveText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  delete: { borderWidth: 1, borderColor: '#d93025' },
-  deleteText: { color: '#d93025', fontSize: 16, fontWeight: '600' },
-  disabled: { opacity: 0.6 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
 });

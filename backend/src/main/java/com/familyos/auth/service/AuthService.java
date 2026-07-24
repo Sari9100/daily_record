@@ -8,6 +8,7 @@ import com.familyos.auth.entity.RefreshToken;
 import com.familyos.auth.repository.RefreshTokenRepository;
 import com.familyos.common.context.AuthUser;
 import com.familyos.common.context.FamilyContext;
+import com.familyos.common.error.BusinessException;
 import com.familyos.common.error.NotFoundException;
 import com.familyos.common.error.UnauthorizedException;
 import com.familyos.common.security.JwtProperties;
@@ -156,6 +157,25 @@ public class AuthService {
         } catch (JwtException | IllegalArgumentException e) {
             // 무시: 로그아웃은 멱등
         }
+    }
+
+    /**
+     * 본인 비밀번호 변경. 현재 비밀번호 검증 후 변경, 탈취 대비 이 계정의 모든 refresh token을
+     * 폐기해 다른 세션(현재 기기 포함)을 전부 로그아웃시킨다 — 새 비밀번호로 다시 로그인해야 한다.
+     */
+    @Transactional
+    public void changePassword(String currentPassword, String newPassword) {
+        AuthUser user = FamilyContext.require();
+        UserAccount account = userAccountRepository.findById(user.accountId())
+                .filter(UserAccount::isActive)
+                .orElseThrow(() -> unauthenticated(LOGIN_FAILED));
+
+        if (!passwordEncoder.matches(currentPassword, account.getPasswordHash())) {
+            throw new BusinessException("현재 비밀번호가 일치하지 않습니다.");
+        }
+
+        account.changePassword(passwordEncoder.encode(newPassword));
+        refreshTokenRepository.revokeAllByAccountId(user.accountId());
     }
 
     @Transactional(readOnly = true)

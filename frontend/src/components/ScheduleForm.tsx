@@ -1,20 +1,12 @@
-import { type ReactNode, useState } from 'react';
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { type ReactNode, useMemo, useState } from 'react';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { format, parseISO } from 'date-fns';
 
 import { ChipGroup, type ChipOption } from '@/components/ChipGroup';
 import { CollectionPicker } from '@/components/CollectionPicker';
+import { Button, Chip, TextField } from '@/components/ui';
+import { Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { useFamilyMembers } from '@/api/schedule';
 import type { Schedule, ScheduleCreate, ScheduleType } from '@/domain/schedule';
 import type { Visibility } from '@/domain/types';
@@ -47,13 +39,15 @@ export function ScheduleForm({
   onDelete,
   deleting,
 }: {
-  initial?: Schedule;
+  /** 편집 시 전체 Schedule, 신규 작성 시 collectionId 등 일부 필드만 prefill 가능. */
+  initial?: Partial<Schedule>;
   submitting: boolean;
   submitLabel: string;
   onSubmit: (body: ScheduleCreate) => Promise<void>;
   onDelete?: () => void;
   deleting?: boolean;
 }) {
+  const theme = useTheme();
   const membersQ = useFamilyMembers();
   const today = format(new Date(), 'yyyy-MM-dd');
   const timed = initial && !initial.allDay && initial.startedAt ? parseISO(initial.startedAt) : null;
@@ -74,6 +68,19 @@ export function ScheduleForm({
   const [description, setDescription] = useState(initial?.description ?? '');
   const [collectionId, setCollectionId] = useState<number | null>(initial?.collectionId ?? null);
   const [error, setError] = useState<string | null>(null);
+
+  // 새 묶음 생성 시 이 일정의 날짜를 그대로 넘겨준다(묶음은 날짜 기준).
+  const suggestedDates = useMemo(() => {
+    if (allDay) {
+      const start = DATE_RE.test(startDate) ? toIso(startDate, '00:00') : null;
+      const endBase = endDate && DATE_RE.test(endDate) ? endDate : startDate;
+      const end = DATE_RE.test(endBase) ? toIso(endBase, '23:59') : null;
+      return { startedAt: start, endedAt: end };
+    }
+    const start = DATE_RE.test(date) && TIME_RE.test(startTime) ? toIso(date, startTime) : null;
+    const end = DATE_RE.test(date) && TIME_RE.test(endTime) ? toIso(date, endTime) : null;
+    return { startedAt: start, endedAt: end };
+  }, [allDay, startDate, endDate, date, startTime, endTime]);
 
   const toggleSubject = (id: number) => {
     setSubjects((prev) => {
@@ -128,45 +135,33 @@ export function ScheduleForm({
   };
 
   return (
-    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={[styles.flex, { backgroundColor: theme.background }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <Field label="제목">
-          <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="제목" placeholderTextColor="#9aa0a6" />
-        </Field>
+        <TextField label="제목" value={title} onChangeText={setTitle} placeholder="제목" />
 
         <Field label="유형">
           <ChipGroup options={TYPE_OPTIONS} value={type} onChange={setType} />
         </Field>
 
         <View style={styles.switchRow}>
-          <Text style={styles.label}>종일</Text>
+          <Text style={[styles.label, { color: theme.textSecondary }]}>종일</Text>
           <Switch value={allDay} onValueChange={setAllDay} />
         </View>
 
         {allDay ? (
           <>
-            <Field label="시작 날짜 (YYYY-MM-DD)">
-              <TextInput style={styles.input} value={startDate} onChangeText={setStartDate} placeholder="2026-06-20" placeholderTextColor="#9aa0a6" autoCapitalize="none" />
-            </Field>
-            <Field label="종료 날짜 (선택)">
-              <TextInput style={styles.input} value={endDate} onChangeText={setEndDate} placeholder="비우면 하루 일정" placeholderTextColor="#9aa0a6" autoCapitalize="none" />
-            </Field>
+            <TextField label="시작 날짜 (YYYY-MM-DD)" value={startDate} onChangeText={setStartDate} placeholder="2026-06-20" autoCapitalize="none" />
+            <TextField label="종료 날짜 (선택)" value={endDate} onChangeText={setEndDate} placeholder="비우면 하루 일정" autoCapitalize="none" />
           </>
         ) : (
           <>
-            <Field label="날짜 (YYYY-MM-DD)">
-              <TextInput style={styles.input} value={date} onChangeText={setDate} placeholder="2026-06-20" placeholderTextColor="#9aa0a6" autoCapitalize="none" />
-            </Field>
+            <TextField label="날짜 (YYYY-MM-DD)" value={date} onChangeText={setDate} placeholder="2026-06-20" autoCapitalize="none" />
             <View style={styles.timeRow}>
               <View style={styles.flex}>
-                <Field label="시작 (HH:mm)">
-                  <TextInput style={styles.input} value={startTime} onChangeText={setStartTime} placeholder="09:00" placeholderTextColor="#9aa0a6" />
-                </Field>
+                <TextField label="시작 (HH:mm)" value={startTime} onChangeText={setStartTime} placeholder="09:00" />
               </View>
               <View style={styles.flex}>
-                <Field label="종료 (선택)">
-                  <TextInput style={styles.input} value={endTime} onChangeText={setEndTime} placeholder="10:00" placeholderTextColor="#9aa0a6" />
-                </Field>
+                <TextField label="종료 (선택)" value={endTime} onChangeText={setEndTime} placeholder="10:00" />
               </View>
             </View>
           </>
@@ -179,76 +174,46 @@ export function ScheduleForm({
         {visibility === 'SHARED_PERSONAL' && (
           <Field label="대상 (subject)">
             <View style={styles.chips}>
-              {(membersQ.data ?? []).map((m) => {
-                const on = subjects.has(m.personId);
-                return (
-                  <Pressable
-                    key={m.personId}
-                    onPress={() => toggleSubject(m.personId)}
-                    style={[styles.chip, on && styles.chipOn]}>
-                    <Text style={[styles.chipText, on && styles.chipTextOn]}>{m.name}</Text>
-                  </Pressable>
-                );
-              })}
+              {(membersQ.data ?? []).map((m) => (
+                <Chip key={m.personId} label={m.name} selected={subjects.has(m.personId)} onPress={() => toggleSubject(m.personId)} />
+              ))}
             </View>
           </Field>
         )}
 
-        <Field label="장소 (선택)">
-          <TextInput style={styles.input} value={location} onChangeText={setLocation} placeholder="장소" placeholderTextColor="#9aa0a6" />
-        </Field>
-
-        <Field label="메모 (선택)">
-          <TextInput style={styles.input} value={description} onChangeText={setDescription} placeholder="메모" placeholderTextColor="#9aa0a6" />
-        </Field>
+        <TextField label="장소 (선택)" value={location} onChangeText={setLocation} placeholder="장소" />
+        <TextField label="메모 (선택)" value={description} onChangeText={setDescription} placeholder="메모" />
 
         <Field label="묶음 (선택)">
-          <CollectionPicker value={collectionId} onChange={setCollectionId} />
+          <CollectionPicker value={collectionId} onChange={setCollectionId} suggestedDates={suggestedDates} />
         </Field>
 
-        {error && <Text style={styles.error}>{error}</Text>}
+        {error && <Text style={{ color: theme.danger, fontSize: 14 }}>{error}</Text>}
 
-        <Pressable style={[styles.btn, styles.save, submitting && styles.disabled]} disabled={submitting} onPress={submit}>
-          {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveText}>{submitLabel}</Text>}
-        </Pressable>
+        <Button label={submitLabel} onPress={submit} loading={submitting} disabled={submitting} />
 
-        {onDelete && (
-          <Pressable style={[styles.btn, styles.delete, deleting && styles.disabled]} disabled={deleting} onPress={onDelete}>
-            {deleting ? <ActivityIndicator color="#d93025" /> : <Text style={styles.deleteText}>삭제</Text>}
-          </Pressable>
-        )}
+        {onDelete && <Button label="삭제" variant="danger" onPress={onDelete} loading={deleting} disabled={deleting} />}
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
+  const theme = useTheme();
   return (
     <View style={styles.field}>
-      <Text style={styles.label}>{label}</Text>
+      <Text style={[styles.label, { color: theme.textSecondary }]}>{label}</Text>
       {children}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: '#fff' },
-  container: { padding: 20, gap: 18 },
-  field: { gap: 8 },
-  label: { fontSize: 13, fontWeight: '600', color: '#3c4043' },
-  input: { borderWidth: 1, borderColor: '#dadce0', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, color: '#202124' },
+  flex: { flex: 1 },
+  container: { padding: Spacing.three, gap: Spacing.four - 6 },
+  field: { gap: Spacing.two },
+  label: { fontSize: 13, fontWeight: '600' },
   switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  timeRow: { flexDirection: 'row', gap: 12 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 20, borderWidth: 1, borderColor: '#dadce0', backgroundColor: '#fff' },
-  chipOn: { backgroundColor: '#1a73e8', borderColor: '#1a73e8' },
-  chipText: { fontSize: 14, color: '#3c4043' },
-  chipTextOn: { color: '#fff', fontWeight: '600' },
-  error: { color: '#d93025', fontSize: 14 },
-  btn: { borderRadius: 10, paddingVertical: 14, alignItems: 'center' },
-  save: { backgroundColor: '#1a73e8' },
-  saveText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  delete: { borderWidth: 1, borderColor: '#d93025' },
-  deleteText: { color: '#d93025', fontSize: 16, fontWeight: '600' },
-  disabled: { opacity: 0.6 },
+  timeRow: { flexDirection: 'row', gap: Spacing.three },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
 });

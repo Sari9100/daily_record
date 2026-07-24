@@ -25,6 +25,15 @@ public interface DiaryRepository extends JpaRepository<Diary, Long> {
               and (:scopeVisibility is null or d.visibility = :scopeVisibility)
               and (:fromDate is null or d.recordedOn >= :fromDate)
               and (:toDate is null or d.recordedOn <= :toDate)
+              and (:collectionId is null or d.collectionId = :collectionId)
+              and (:q is null or :q = ''
+                    or lower(d.title) like lower(concat('%', :q, '%'))
+                    or lower(d.content) like lower(concat('%', :q, '%'))
+                    or exists (select dt.id from DiaryTag dt, Tag tg
+                               where dt.tagId = tg.id
+                                 and dt.diaryId = d.id
+                                 and dt.familyId = :familyId
+                                 and lower(tg.name) like lower(concat('%', :q, '%'))))
               and (
                     d.visibility = com.familyos.common.domain.Visibility.FAMILY
                     or (d.visibility = com.familyos.common.domain.Visibility.PARENTS and :isParent = true)
@@ -43,5 +52,7 @@ public interface DiaryRepository extends JpaRepository<Diary, Long> {
                        @Param("isParent") boolean isParent,
                        @Param("scopeVisibility") @Nullable Visibility scopeVisibility,
                        @Param("fromDate") @Nullable LocalDate fromDate,
-                       @Param("toDate") @Nullable LocalDate toDate);
+                       @Param("toDate") @Nullable LocalDate toDate,
+                       @Param("collectionId") @Nullable Long collectionId,
+                       @Param("q") @Nullable String q);
 }

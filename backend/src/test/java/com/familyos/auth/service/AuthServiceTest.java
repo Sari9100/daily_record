@@ -3,7 +3,10 @@ package com.familyos.auth.service;
 import com.familyos.auth.dto.TokenResponse;
 import com.familyos.auth.entity.RefreshToken;
 import com.familyos.auth.repository.RefreshTokenRepository;
+import com.familyos.common.context.AuthUser;
+import com.familyos.common.context.FamilyContext;
 import com.familyos.common.domain.FamilyRole;
+import com.familyos.common.error.BusinessException;
 import com.familyos.common.error.UnauthorizedException;
 import com.familyos.common.security.JwtProperties;
 import com.familyos.common.security.JwtProvider;
@@ -16,6 +19,7 @@ import com.familyos.person.repository.FamilyRepository;
 import com.familyos.person.repository.PersonRepository;
 import com.familyos.person.repository.UserAccountRepository;
 import io.jsonwebtoken.Claims;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -143,5 +147,43 @@ class AuthServiceTest {
                 .isInstanceOf(UnauthorizedException.class);
 
         verify(jwtProvider, never()).createAccessToken(any());
+    }
+
+    @Test
+    void 비밀번호_변경_성공시_해시를_바꾸고_모든_세션을_폐기한다() {
+        FamilyContext.set(new AuthUser(PERSON_ID, ACCOUNT_ID, 1L, FamilyRole.PARENT));
+        try {
+            Person person = new Person("사리", null, null);
+            UserAccount account = new UserAccount(person, "sari", "old-hash");
+            when(userAccountRepository.findById(ACCOUNT_ID)).thenReturn(Optional.of(account));
+            when(passwordEncoder.matches("current", "old-hash")).thenReturn(true);
+            when(passwordEncoder.encode("newpassword")).thenReturn("new-hash");
+
+            authService.changePassword("current", "newpassword");
+
+            assertThat(account.getPasswordHash()).isEqualTo("new-hash");
+            verify(refreshTokenRepository).revokeAllByAccountId(ACCOUNT_ID);
+        } finally {
+            FamilyContext.clear();
+        }
+    }
+
+    @Test
+    void 비밀번호_변경시_현재비밀번호_불일치면_422이고_변경되지_않는다() {
+        FamilyContext.set(new AuthUser(PERSON_ID, ACCOUNT_ID, 1L, FamilyRole.PARENT));
+        try {
+            Person person = new Person("사리", null, null);
+            UserAccount account = new UserAccount(person, "sari", "old-hash");
+            when(userAccountRepository.findById(ACCOUNT_ID)).thenReturn(Optional.of(account));
+            when(passwordEncoder.matches("wrong", "old-hash")).thenReturn(false);
+
+            assertThatThrownBy(() -> authService.changePassword("wrong", "newpassword"))
+                    .isInstanceOf(BusinessException.class);
+
+            assertThat(account.getPasswordHash()).isEqualTo("old-hash");
+            verify(refreshTokenRepository, never()).revokeAllByAccountId(any());
+        } finally {
+            FamilyContext.clear();
+        }
     }
 }

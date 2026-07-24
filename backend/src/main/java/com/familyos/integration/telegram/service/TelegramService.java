@@ -108,7 +108,7 @@ public class TelegramService {
     /** Hermes 조회(일정). "내일 일정?" 등. visibility 권한 범위 내. */
     public List<ScheduleResponse> schedules(Long telegramUserId, @Nullable Instant from, @Nullable Instant to,
                                             @Nullable ScheduleType type, @Nullable String scope) {
-        return actingAs(telegramUserId, () -> scheduleService.list(from, to, type, scope));
+        return actingAs(telegramUserId, () -> scheduleService.list(from, to, type, scope, null));
     }
 
     // ---- 내부 ----

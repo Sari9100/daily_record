@@ -8,6 +8,7 @@ export type ScheduleListParams = {
   to?: string;
   type?: ScheduleType;
   scope?: string;
+  q?: string;
 };
 
 async function fetchSchedules(params: ScheduleListParams): Promise<Schedule[]> {
@@ -18,8 +19,12 @@ async function fetchSchedules(params: ScheduleListParams): Promise<Schedule[]> {
   return res.data.data;
 }
 
-export function useSchedules(params: ScheduleListParams) {
-  return useQuery({ queryKey: ['schedules', params], queryFn: () => fetchSchedules(params) });
+export function useSchedules(params: ScheduleListParams, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: ['schedules', params],
+    queryFn: () => fetchSchedules(params),
+    enabled: options?.enabled,
+  });
 }
 
 /** 단건 GET 엔드포인트가 없어 목록 캐시에서 일정을 찾아 편집 prefill. */

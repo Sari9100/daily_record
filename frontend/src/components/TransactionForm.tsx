@@ -1,18 +1,11 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ChipGroup, type ChipOption } from '@/components/ChipGroup';
 import { CollectionPicker } from '@/components/CollectionPicker';
+import { Button, TextField } from '@/components/ui';
+import { Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { useAccounts, useCategories } from '@/api/ledger';
 import type { TransactionCreate, TransactionType } from '@/domain/ledger';
 import type { Visibility } from '@/domain/types';
@@ -56,6 +49,7 @@ export function TransactionForm({
   onDelete?: () => void;
   deleting?: boolean;
 }) {
+  const theme = useTheme();
   const [type, setType] = useState<TransactionType>(initial?.type ?? 'EXPENSE');
   const [amount, setAmount] = useState(initial?.amount ?? '');
   const [sourceId, setSourceId] = useState<number | null>(initial?.sourceId ?? null);
@@ -131,22 +125,13 @@ export function TransactionForm({
   const showTarget = type === 'INCOME' || type === 'TRANSFER';
 
   return (
-    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={[styles.flex, { backgroundColor: theme.background }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <Field label="유형">
           <ChipGroup options={TYPE_OPTIONS} value={type} onChange={changeType} />
         </Field>
 
-        <Field label="금액">
-          <TextInput
-            style={styles.input}
-            value={amount}
-            onChangeText={setAmount}
-            keyboardType="number-pad"
-            placeholder="0"
-            placeholderTextColor="#9aa0a6"
-          />
-        </Field>
+        <TextField label="금액" value={amount} onChangeText={setAmount} keyboardType="number-pad" placeholder="0" />
 
         {showSource && (
           <Field label={type === 'TRANSFER' ? '출금 계좌' : '결제 계좌'}>
@@ -185,70 +170,35 @@ export function TransactionForm({
           <ChipGroup options={VISIBILITY_OPTIONS} value={visibility} onChange={setVisibility} />
         </Field>
 
-        <Field label="메모 (선택)">
-          <TextInput
-            style={styles.input}
-            value={memo}
-            onChangeText={setMemo}
-            placeholder="메모"
-            placeholderTextColor="#9aa0a6"
-          />
+        <TextField label="메모 (선택)" value={memo} onChangeText={setMemo} placeholder="메모" />
+
+        <Field label="묶음 (선택, 일정에서 생성)">
+          <CollectionPicker value={collectionId} onChange={setCollectionId} allowCreate={false} />
         </Field>
 
-        <Field label="묶음 (선택)">
-          <CollectionPicker value={collectionId} onChange={setCollectionId} />
-        </Field>
+        {formError && <Text style={{ color: theme.danger, fontSize: 14 }}>{formError}</Text>}
 
-        {formError && <Text style={styles.error}>{formError}</Text>}
+        <Button label={submitLabel} onPress={submit} loading={submitting} disabled={submitting} />
 
-        <Pressable
-          style={[styles.btn, styles.save, submitting && styles.disabled]}
-          disabled={submitting}
-          onPress={submit}>
-          {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveText}>{submitLabel}</Text>}
-        </Pressable>
-
-        {onDelete && (
-          <Pressable
-            style={[styles.btn, styles.delete, deleting && styles.disabled]}
-            disabled={deleting}
-            onPress={onDelete}>
-            {deleting ? <ActivityIndicator color="#d93025" /> : <Text style={styles.deleteText}>삭제</Text>}
-          </Pressable>
-        )}
+        {onDelete && <Button label="삭제" variant="danger" onPress={onDelete} loading={deleting} disabled={deleting} />}
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
+  const theme = useTheme();
   return (
     <View style={styles.field}>
-      <Text style={styles.label}>{label}</Text>
+      <Text style={[styles.label, { color: theme.textSecondary }]}>{label}</Text>
       {children}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: '#fff' },
-  container: { padding: 20, gap: 20 },
-  field: { gap: 8 },
-  label: { fontSize: 13, fontWeight: '600', color: '#3c4043' },
-  input: {
-    borderWidth: 1,
-    borderColor: '#dadce0',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: '#202124',
-  },
-  error: { color: '#d93025', fontSize: 14 },
-  btn: { borderRadius: 10, paddingVertical: 14, alignItems: 'center' },
-  save: { backgroundColor: '#1a73e8' },
-  saveText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  delete: { borderWidth: 1, borderColor: '#d93025' },
-  deleteText: { color: '#d93025', fontSize: 16, fontWeight: '600' },
-  disabled: { opacity: 0.6 },
+  flex: { flex: 1 },
+  container: { padding: Spacing.three, gap: Spacing.three },
+  field: { gap: Spacing.two },
+  label: { fontSize: 13, fontWeight: '600' },
 });

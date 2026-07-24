@@ -3,6 +3,8 @@ import { ActivityIndicator, Image, Platform, Pressable, StyleSheet, Text, View }
 import { useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 
+import { Radius, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { uploadPhotoToDiary, useDeletePhoto } from '@/api/photo';
 import { pickImageWeb } from '@/lib/pickImage';
 import { confirmAsync } from '@/lib/confirm';
@@ -11,6 +13,7 @@ import type { DiaryPhoto } from '@/domain/diary';
 
 /** 일기 사진 첨부/표시 (편집 화면). 웹은 파일선택 업로드, 네이티브는 추후. */
 export function PhotoSection({ diaryId, initialPhotos }: { diaryId: number; initialPhotos: DiaryPhoto[] }) {
+  const theme = useTheme();
   const [photos, setPhotos] = useState<DiaryPhoto[]>(initialPhotos);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,45 +45,40 @@ export function PhotoSection({ diaryId, initialPhotos }: { diaryId: number; init
 
   return (
     <View style={styles.section}>
-      <Text style={styles.label}>사진</Text>
+      <Text style={[styles.label, { color: theme.textSecondary }]}>사진</Text>
       <View style={styles.grid}>
         {photos.map((p) => (
           <View key={p.id} style={styles.thumbWrap}>
             {p.url ? (
-              <Image source={{ uri: mediaUrl(p.url) }} style={styles.thumb} resizeMode="cover" />
+              <Image source={{ uri: mediaUrl(p.url) }} style={[styles.thumb, { backgroundColor: theme.surfaceMuted }]} resizeMode="cover" />
             ) : (
-              <View style={[styles.thumb, styles.thumbEmpty]} />
+              <View style={[styles.thumb, { backgroundColor: theme.surfaceMuted }]} />
             )}
-            <Pressable style={styles.removeBadge} hitSlop={6} onPress={() => remove(p.id)}>
+            <Pressable style={[styles.removeBadge, { backgroundColor: theme.danger }]} hitSlop={6} onPress={() => remove(p.id)}>
               <Ionicons name="close" size={14} color="#fff" />
             </Pressable>
           </View>
         ))}
 
         {Platform.OS === 'web' ? (
-          <Pressable style={styles.addBtn} onPress={add} disabled={uploading}>
-            {uploading ? (
-              <ActivityIndicator color="#1a73e8" />
-            ) : (
-              <Ionicons name="add" size={28} color="#1a73e8" />
-            )}
+          <Pressable style={[styles.addBtn, { borderColor: theme.border }]} onPress={add} disabled={uploading}>
+            {uploading ? <ActivityIndicator color={theme.primary} /> : <Ionicons name="add" size={28} color={theme.primary} />}
           </Pressable>
         ) : (
-          <Text style={styles.nativeNote}>사진 추가는 앱에서 추후 지원</Text>
+          <Text style={[styles.nativeNote, { color: theme.textMuted }]}>사진 추가는 앱에서 추후 지원</Text>
         )}
       </View>
-      {error && <Text style={styles.error}>{error}</Text>}
+      {error && <Text style={{ color: theme.danger, fontSize: 13 }}>{error}</Text>}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  section: { gap: 8 },
-  label: { fontSize: 13, fontWeight: '600', color: '#3c4043' },
+  section: { gap: Spacing.two },
+  label: { fontSize: 13, fontWeight: '600' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   thumbWrap: { position: 'relative' },
-  thumb: { width: 88, height: 88, borderRadius: 8, backgroundColor: '#f1f3f4' },
-  thumbEmpty: { alignItems: 'center', justifyContent: 'center' },
+  thumb: { width: 88, height: 88, borderRadius: Radius.sm },
   removeBadge: {
     position: 'absolute',
     top: -6,
@@ -88,20 +86,17 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: '#d93025',
     alignItems: 'center',
     justifyContent: 'center',
   },
   addBtn: {
     width: 88,
     height: 88,
-    borderRadius: 8,
+    borderRadius: Radius.sm,
     borderWidth: 1,
-    borderColor: '#dadce0',
     borderStyle: 'dashed',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  nativeNote: { fontSize: 12, color: '#9aa0a6', alignSelf: 'center' },
-  error: { color: '#d93025', fontSize: 13 },
+  nativeNote: { fontSize: 12, alignSelf: 'center' },
 });

@@ -1,17 +1,24 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { format, parseISO } from 'date-fns';
+import { endOfMonth, format, parseISO, startOfMonth } from 'date-fns';
 
-import { useTransactions } from '@/api/ledger';
+import { ComboBox, EmptyState, Fab, ScreenHeader, SortOrderToggle, ViewModeToggle } from '@/components/ui';
+import { MonthGrid } from '@/components/calendar/MonthGrid';
+import { MonthNav } from '@/components/calendar/MonthNav';
+import { Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
+import { useViewMode } from '@/hooks/use-view-mode';
+import { useLinkTransactionsToCollection, useTransactions } from '@/api/ledger';
+import { useCollections } from '@/api/collection';
 import type { Transaction } from '@/domain/ledger';
 
-function amountColor(type: Transaction['transactionType']): string {
-  if (type === 'EXPENSE') return '#d93025';
-  if (type === 'INCOME') return '#188038';
-  return '#5f6368';
+function amountColor(type: Transaction['transactionType'], theme: ReturnType<typeof useTheme>): string {
+  if (type === 'EXPENSE') return theme.danger;
+  if (type === 'INCOME') return theme.success;
+  return theme.textSecondary;
 }
 
 function amountText(t: Transaction): string {
@@ -27,48 +34,161 @@ function accountText(t: Transaction): string {
   return `${t.sourceAccount?.name ?? mask} → ${t.targetAccount?.name ?? mask}`;
 }
 
-function Row({ t, onPress }: { t: Transaction; onPress: () => void }) {
+function Row({
+  t,
+  onPress,
+  selecting,
+  selected,
+}: {
+  t: Transaction;
+  onPress: () => void;
+  selecting: boolean;
+  selected: boolean;
+}) {
+  const theme = useTheme();
   const title = t.category?.name ?? t.memo ?? '(미분류)';
   return (
     <Pressable style={styles.row} onPress={onPress}>
+      {selecting && (
+        <Ionicons
+          name={selected ? 'checkbox' : 'square-outline'}
+          size={22}
+          color={selected ? theme.primary : theme.textMuted}
+        />
+      )}
       <View style={styles.rowLeft}>
-        <Text style={styles.rowTitle} numberOfLines={1}>
+        <Text style={[styles.rowTitle, { color: theme.text }]} numberOfLines={1}>
           {title}
         </Text>
-        <Text style={styles.rowSub} numberOfLines={1}>
+        <Text style={[styles.rowSub, { color: theme.textSecondary }]} numberOfLines={1}>
           {accountText(t)}
           {t.memo && t.category ? ` · ${t.memo}` : ''}
         </Text>
       </View>
       <View style={styles.rowRight}>
-        <Text style={[styles.amount, { color: amountColor(t.transactionType) }]}>{amountText(t)}</Text>
-        <Text style={styles.time}>{format(parseISO(t.occurredAt), 'M/d HH:mm')}</Text>
+        <Text style={[styles.amount, { color: amountColor(t.transactionType, theme) }]}>{amountText(t)}</Text>
+        <Text style={[styles.time, { color: theme.textMuted }]}>{format(parseISO(t.occurredAt), 'M/d HH:mm')}</Text>
       </View>
     </Pressable>
   );
 }
 
 export default function LedgerScreen() {
+  const theme = useTheme();
   const router = useRouter();
-  const params = useMemo(() => ({ page: 0, size: 30 }), []);
+  const [viewMode, setViewMode] = useViewMode('ledger');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [month, setMonth] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+
+  const [selecting, setSelecting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const collectionsQ = useCollections();
+  const linkMut = useLinkTransactionsToCollection();
+
+  const params = useMemo(
+    () => ({
+      from: startOfMonth(month).toISOString(),
+      to: endOfMonth(month).toISOString(),
+      page: 0,
+      size: 200,
+    }),
+    [month],
+  );
   const { data, isLoading, isError, error, refetch, isRefetching } = useTransactions(params);
+  const transactions = data?.content ?? [];
+
+  const markersByDate = useMemo(() => {
+    const map: Record<string, { color: string }[]> = {};
+    for (const t of transactions) {
+      const key = format(parseISO(t.occurredAt), 'yyyy-MM-dd');
+      const color = amountColor(t.transactionType, theme);
+      (map[key] ??= []).push({ color });
+    }
+    return map;
+  }, [transactions, theme]);
+
+  const visibleTransactions = useMemo(() => {
+    const base =
+      viewMode === 'CALENDAR' && selectedDate
+        ? transactions.filter((t) => format(parseISO(t.occurredAt), 'yyyy-MM-dd') === selectedDate)
+        : transactions;
+    if (viewMode !== 'INLINE') return base;
+    return [...base].sort((a, b) =>
+      sortOrder === 'asc' ? a.occurredAt.localeCompare(b.occurredAt) : b.occurredAt.localeCompare(a.occurredAt),
+    );
+  }, [transactions, viewMode, selectedDate, sortOrder]);
+
+  const toggleSelecting = () => {
+    setSelecting((prev) => !prev);
+    setSelectedIds(new Set());
+  };
+
+  const toggleSelected = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const openItem = (t: Transaction) => {
+    if (selecting) {
+      toggleSelected(t.id);
+      return;
+    }
+    router.push({ pathname: '/transaction/[id]', params: { id: t.id } });
+  };
+
+  const linkSelectedTo = async (collectionId: number | null) => {
+    if (collectionId == null) return;
+    await linkMut.mutateAsync({ transactionIds: [...selectedIds], collectionId });
+    setSelecting(false);
+    setSelectedIds(new Set());
+  };
+
+  const collectionOptions = (collectionsQ.data ?? []).map((c) => ({
+    value: c.id,
+    label: c.tags.length > 0 ? `${c.name} (${c.tags.join(', ')})` : c.name,
+  }));
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>가계부</Text>
-        <View style={styles.headerLinks}>
-          <Pressable onPress={() => router.push('/statistics')} hitSlop={8}>
-            <Text style={styles.headerLink}>통계</Text>
-          </Pressable>
-          <Pressable onPress={() => router.push('/accounts')} hitSlop={8}>
-            <Text style={styles.headerLink}>계좌</Text>
-          </Pressable>
-          <Pressable onPress={() => router.push('/categories')} hitSlop={8}>
-            <Text style={styles.headerLink}>카테고리</Text>
-          </Pressable>
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]} edges={['top']}>
+      <ScreenHeader
+        title="가계부"
+        links={[
+          { label: selecting ? '선택 취소' : '선택', onPress: toggleSelecting },
+          { label: '통계', onPress: () => router.push('/statistics') },
+          { label: '계좌', onPress: () => router.push('/accounts') },
+          { label: '카테고리', onPress: () => router.push('/categories') },
+        ]}
+      />
+
+      <MonthNav
+        month={month}
+        onMonthChange={(m) => {
+          setMonth(m);
+          setSelectedDate(null);
+        }}
+        right={
+          <>
+            {viewMode === 'INLINE' && <SortOrderToggle order={sortOrder} onChange={setSortOrder} />}
+            <ViewModeToggle mode={viewMode} onChange={setViewMode} />
+          </>
+        }
+      />
+
+      {viewMode === 'CALENDAR' && (
+        <View style={styles.calendarBox}>
+          <MonthGrid
+            month={month}
+            markersByDate={markersByDate}
+            selectedDate={selectedDate}
+            onSelectDate={(d) => setSelectedDate((prev) => (prev === d ? null : d))}
+          />
         </View>
-      </View>
+      )}
 
       {isLoading ? (
         <View style={styles.center}>
@@ -76,77 +196,91 @@ export default function LedgerScreen() {
         </View>
       ) : isError ? (
         <View style={styles.center}>
-          <Text style={styles.errorText}>
+          <Text style={[styles.errorText, { color: theme.danger }]}>
             거래를 불러오지 못했습니다.{'\n'}
             {error instanceof Error ? error.message : ''}
           </Text>
         </View>
       ) : (
         <FlatList
-          data={data?.content ?? []}
+          data={visibleTransactions}
           keyExtractor={(t) => String(t.id)}
           renderItem={({ item }) => (
-            <Row
-              t={item}
-              onPress={() => router.push({ pathname: '/transaction/[id]', params: { id: item.id } })}
-            />
+            <Row t={item} onPress={() => openItem(item)} selecting={selecting} selected={selectedIds.has(item.id)} />
           )}
-          ItemSeparatorComponent={() => <View style={styles.sep} />}
-          contentContainerStyle={(data?.content.length ?? 0) === 0 ? styles.emptyBox : styles.list}
+          ItemSeparatorComponent={() => <View style={[styles.sep, { backgroundColor: theme.surfaceMuted }]} />}
+          contentContainerStyle={[
+            visibleTransactions.length === 0 ? styles.emptyBox : styles.list,
+            selecting && selectedIds.size > 0 ? styles.listWithActionBar : null,
+          ]}
           onRefresh={refetch}
           refreshing={isRefetching}
           ListEmptyComponent={
-            <Text style={styles.emptyText}>아직 거래가 없어요.{'\n'}+ 버튼으로 첫 거래를 입력해 보세요.</Text>
+            <EmptyState
+              text={
+                viewMode === 'CALENDAR' && selectedDate
+                  ? '이 날짜엔 거래가 없어요.'
+                  : '아직 거래가 없어요.\n+ 버튼으로 첫 거래를 입력해 보세요.'
+              }
+            />
           }
         />
       )}
 
-      <Pressable style={styles.fab} onPress={() => router.push('/transaction/new')}>
-        <Ionicons name="add" size={28} color="#fff" />
-      </Pressable>
+      {selecting && selectedIds.size > 0 && (
+        <View style={[styles.actionBar, { backgroundColor: theme.background, borderTopColor: theme.border }]}>
+          <Text style={[styles.actionBarText, { color: theme.text }]}>{selectedIds.size}개 선택됨</Text>
+          <View style={styles.actionBarCombo}>
+            <ComboBox
+              options={collectionOptions}
+              value={null}
+              onChange={linkSelectedTo}
+              placeholder="묶음에 연결"
+              searchPlaceholder="묶음 이름·태그 검색"
+              emptyText="연결할 수 있는 묶음이 없어요. 일정 작성 화면에서 먼저 만들어보세요."
+            />
+          </View>
+        </View>
+      )}
+      {linkMut.isError && (
+        <Text style={{ color: theme.danger, fontSize: 13, textAlign: 'center', paddingBottom: 8 }}>
+          {linkMut.error instanceof Error ? linkMut.error.message : '연결에 실패했습니다.'}
+        </Text>
+      )}
+
+      {!selecting && <Fab onPress={() => router.push('/transaction/new')} />}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#fff' },
-  header: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+  safe: { flex: 1 },
+  calendarBox: { paddingHorizontal: Spacing.two, paddingBottom: Spacing.two },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.four },
+  errorText: { textAlign: 'center', fontSize: 14, lineHeight: 20 },
+  list: { paddingHorizontal: Spacing.three, paddingBottom: 96 },
+  listWithActionBar: { paddingBottom: 96 },
+  emptyBox: { flexGrow: 1 },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: 12 },
+  rowLeft: { flex: 1, gap: 3 },
+  rowTitle: { fontSize: 16, fontWeight: '500' },
+  rowSub: { fontSize: 13 },
+  rowRight: { alignItems: 'flex-end', gap: 3 },
+  amount: { fontSize: 16, fontWeight: '700' },
+  time: { fontSize: 12 },
+  sep: { height: 1 },
+  actionBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two + 4,
+    borderTopWidth: 1,
   },
-  headerTitle: { fontSize: 22, fontWeight: '700', color: '#202124' },
-  headerLinks: { flexDirection: 'row', gap: 16 },
-  headerLink: { fontSize: 15, color: '#1a73e8', fontWeight: '600' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  errorText: { textAlign: 'center', color: '#d93025', fontSize: 14, lineHeight: 20 },
-  list: { paddingHorizontal: 16, paddingBottom: 96 },
-  emptyBox: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  emptyText: { textAlign: 'center', color: '#5f6368', fontSize: 15, lineHeight: 22 },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: 12 },
-  rowLeft: { flex: 1, gap: 3 },
-  rowTitle: { fontSize: 16, color: '#202124', fontWeight: '500' },
-  rowSub: { fontSize: 13, color: '#5f6368' },
-  rowRight: { alignItems: 'flex-end', gap: 3 },
-  amount: { fontSize: 16, fontWeight: '700' },
-  time: { fontSize: 12, color: '#9aa0a6' },
-  sep: { height: 1, backgroundColor: '#f1f3f4' },
-  fab: {
-    position: 'absolute',
-    right: 20,
-    bottom: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#1a73e8',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 4,
-  },
+  actionBarText: { fontSize: 15, fontWeight: '600' },
+  actionBarCombo: { width: 220 },
 });

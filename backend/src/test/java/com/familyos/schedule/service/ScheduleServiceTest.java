@@ -116,14 +116,14 @@ class ScheduleServiceTest {
                 Instant.parse("2026-07-01T01:00:00Z"), null, null, null, false,
                 Visibility.SHARED_PERSONAL, ScheduleType.EVENT, null, null);
         when(personRepository.findById(VIEWER)).thenReturn(Optional.of(new Person("나", null, "Asia/Seoul")));
-        when(scheduleRepository.search(any(), any(), anyBoolean(), any(), any(), any(), any(), any(), any()))
+        when(scheduleRepository.search(any(), any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(List.of(shared));
         when(subjectRepository.findByScheduleIdInAndFamilyId(any(), any())).thenReturn(List.of());
         when(participantRepository.findByScheduleIdInAndFamilyId(any(), any())).thenReturn(List.of());
         when(personSettingRepository.findByPersonId(VIEWER))
                 .thenReturn(Optional.of(new PersonSetting(VIEWER, DetailLevel.SUMMARY)));
 
-        List<ScheduleResponse> result = service.list(null, null, null, null);
+        List<ScheduleResponse> result = service.list(null, null, null, null, null);
 
         assertThat(result).hasSize(1);
         assertThat(result.getFirst().title()).isEqualTo("바쁨");
@@ -138,14 +138,14 @@ class ScheduleServiceTest {
                 Instant.parse("2026-07-01T01:00:00Z"), null, null, null, false,
                 Visibility.SHARED_PERSONAL, ScheduleType.EVENT, null, null);
         when(personRepository.findById(VIEWER)).thenReturn(Optional.of(new Person("나", null, "Asia/Seoul")));
-        when(scheduleRepository.search(any(), any(), anyBoolean(), any(), any(), any(), any(), any(), any()))
+        when(scheduleRepository.search(any(), any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(List.of(shared));
         when(subjectRepository.findByScheduleIdInAndFamilyId(any(), any())).thenReturn(List.of());
         when(participantRepository.findByScheduleIdInAndFamilyId(any(), any())).thenReturn(List.of());
         when(personSettingRepository.findByPersonId(VIEWER))
                 .thenReturn(Optional.of(new PersonSetting(VIEWER, DetailLevel.FULL)));
 
-        List<ScheduleResponse> result = service.list(null, null, null, null);
+        List<ScheduleResponse> result = service.list(null, null, null, null, null);
 
         assertThat(result.getFirst().title()).isEqualTo("비밀상담");
     }

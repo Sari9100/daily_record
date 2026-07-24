@@ -30,6 +30,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
               and (:to is null or t.occurredAt <= :to)
               and (:type is null or t.transactionType = :type)
               and (:categoryId is null or t.categoryId = :categoryId)
+              and (:collectionId is null or t.collectionId = :collectionId)
               and (:scopeVisibility is null or t.visibility = :scopeVisibility)
               and (t.visibility = com.familyos.common.domain.Visibility.FAMILY
                    or (t.visibility = com.familyos.common.domain.Visibility.PARENTS and :isParent = true)
@@ -43,6 +44,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
                              @Param("to") @Nullable Instant to,
                              @Param("type") @Nullable TransactionType type,
                              @Param("categoryId") @Nullable Long categoryId,
+                             @Param("collectionId") @Nullable Long collectionId,
                              @Param("scopeVisibility") @Nullable Visibility scopeVisibility,
                              Pageable pageable);
 }

@@ -81,6 +81,11 @@ Authorization: Bearer {accessToken}
 #### GET /api/v1/auth/me
 - 현재 토큰 기준 본인 정보(person, family, role)
 
+#### PUT /api/v1/auth/password (2026-07 리뉴얼 추가)
+- 요청: `{ "currentPassword": "...", "newPassword": "..." }` (newPassword 8자 이상)
+- 현재 비밀번호 불일치 시 422(`BUSINESS_RULE`, "현재 비밀번호가 일치하지 않습니다.")
+- 성공 시 이 계정의 **모든 refresh token 폐기**(현재 기기 포함) — 새 비밀번호로 다시 로그인해야 함. 더보기 메뉴에서 진입.
+
 > 회원가입/계정 생성은 가족 관리(부모가 자녀 계정 생성)와 얽혀 별도 — 4장 참조.
 
 ### 1-3. 권한 판정 규칙 (visibility) — 모든 도메인 공통
@@ -130,8 +135,9 @@ Authorization: Bearer {accessToken}
 ### 2-3. Transaction
 
 #### GET /api/v1/transactions
-쿼리: `?from=2026-06-01T00:00:00Z&to=2026-06-30T23:59:59Z&type=EXPENSE&categoryId=3&scope=ALL&page=0&size=20`
+쿼리: `?from=2026-06-01T00:00:00Z&to=2026-06-30T23:59:59Z&type=EXPENSE&categoryId=3&scope=ALL&collectionId=7&page=0&size=20`
 - `scope`: ALL | PRIVATE | PARENTS (보기 필터, 권한 범위 내)
+- `collectionId`(2026-07 리뉴얼 추가): 지정 시 해당 묶음에 연결된 거래만(날짜 범위와 무관하게 전체 기간) 반환 — 묶음 요약 화면에서 사용
 - 응답: 페이지네이션. item에 결제계좌는 **본인 것만 노출**, 타인 공유거래는 계좌 마스킹
 ```json
 { "id": 10, "transactionType": "EXPENSE", "amount": 50000, "currency": "KRW",
@@ -157,6 +163,14 @@ Authorization: Bearer {accessToken}
 - TRANSFER: source·target 모두 필수, 서로 달라야 함
 - settlementStatus는 서버가 규칙으로 결정(공동→PENDING, 개인→NONE). 클라 전송 무시
 
+#### POST /api/v1/transactions/link-collection (2026-07 리뉴얼 추가)
+가계부 다중선택 → 묶음 일괄연결. 다른 필드는 건드리지 않음(서버가 로드한 엔티티에 collectionId만 변경).
+```json
+{ "transactionIds": [10, 11, 12], "collectionId": 3 }
+```
+- `collectionId`는 null 허용(연결 해제 용도로도 재사용). 각 거래는 작성자 본인만(VisibilityGuard, 위반 시 해당 id에서 404).
+- 응답: `{ "success": true, "data": 3 }` (실제 갱신된 건수)
+
 #### PUT /api/v1/transactions/{id}  ·  DELETE (soft)
 - author 본인만 수정/삭제
 
@@ -174,8 +188,9 @@ Authorization: Bearer {accessToken}
 ## 3. 일정 (Schedule)
 
 #### GET /api/v1/schedules
-쿼리: `?from=...&to=...&type=EVENT&scope=ALL`
+쿼리: `?from=...&to=...&type=EVENT&scope=ALL&q=검색어`
 - 권한 범위 내 일정. SHARED_PERSONAL 타인 일정은 PersonSetting=SUMMARY면 title 일부/시간만
+- `q`(2026-07 리뉴얼 추가): title/description/location 부분일치(대소문자 무시). from/to 없이 `q`만 보내면 전체기간 검색(일정 화면 검색 UI에서 사용).
 - 응답 item: `{ id, title, location, startedAt, endedAt, startDate, endDate, allDay, visibility, scheduleType, isDone, recurrenceRule, subjects:[personId], participants:[personId], collectionId, syncStatus }`
   - allDay=true → startDate/endDate 사용(startedAt/endedAt null), allDay=false → 반대
 
@@ -213,14 +228,18 @@ Authorization: Bearer {accessToken}
 - 데이터 이관 없음 — UserAccount row만 추가
 
 #### GET /api/v1/me/settings  ·  PUT /api/v1/me/settings
-- PersonSetting: `{ "sharedScheduleDetailLevel": "SUMMARY" }`
+- PersonSetting: `{ "sharedScheduleDetailLevel": "SUMMARY", "ledgerDefaultView": "CALENDAR", "scheduleDefaultView": "CALENDAR", "diaryDefaultView": "CALENDAR" }`
+- `ledgerDefaultView`/`scheduleDefaultView`/`diaryDefaultView`: `INLINE | CALENDAR` — 가계부/일정/기록 화면을 열었을 때 기본으로 보여줄 뷰(화면 내에서는 언제든 전환 가능, 여기 값은 "기본값"만). 2026-07 리뉴얼에서 추가(V2), 기본값은 CALENDAR(월간)로 통일(V3).
+- PUT은 4개 필드 전체를 보낸다(부분 업데이트 아님) — 클라이언트가 현재 GET 응답에 변경분만 덮어써 전송.
 
 ---
 
 ## 5. 일상기록 (Diary / Photo)
 
-#### GET /api/v1/diaries?from=...&to=...&view=feed&scope=ALL
+#### GET /api/v1/diaries?from=...&to=...&view=feed&scope=ALL&collectionId=3&q=검색어
 - view: feed | calendar | album (응답 형태 동일, 클라가 렌더 구분)
+- `collectionId`(2026-07 리뉴얼 추가): 지정 시 해당 묶음에 연결된 기록만(날짜 범위와 무관하게 전체 기간) 반환 — 기록 화면의 "묶음 선택" 진입점에서 사용.
+- `q`(2026-07 리뉴얼 추가): title/content/연결된 tag명 부분일치(대소문자 무시). from/to 없이 `q`만 보내면 전체기간 검색(기록 화면 검색 UI에서 사용).
 - item: `{ id, title, content, visibility, recordedAt, recordedOn, subjects:[personId], collectionId, tags:[], photos:[{id, storageKey→signedUrl, width, height, takenAt}] }`
   - recordedOn(날짜)이 타임라인 정렬 기준, recordedAt은 작성 시각
 
@@ -256,13 +275,19 @@ Authorization: Bearer {accessToken}
 ## 6. 이벤트 묶음 (Collection)
 
 #### GET /api/v1/collections  ·  POST  ·  PUT  ·  DELETE
-- POST: `{ "name": "2026 여름휴가", "startedAt": ..., "endedAt": ..., "coverPhotoId": null }`
+- POST/PUT: `{ "name": "2026 여름휴가", "description": null, "startedAt": ..., "endedAt": ..., "tagIds": [5] }`
+- 응답에 `tags: string[]` 포함(2026-07 리뉴얼 추가 — `collection_tag`, `tag` 도메인 재사용). 태그로 검색하면 그 묶음에 연결된 일정·가계부·기록까지 요약 화면에서 확인 가능.
+- 묶음 생성은 일정(Schedule) 작성 화면을 베이스로 함 — 그 일정의 날짜가 묶음 `startedAt/endedAt`에도 반영됨.
 
 #### GET /api/v1/collections/{id}/summary
 - 묶음 리뷰: `{ collection, totalExpense, transactionCount, photoCount, diaryCount, scheduleCount }`
 
 #### PATCH /api/v1/{transactions|schedules|diaries|photos}/{id}/collection
 - 항목을 묶음에 연결/해제: `{ "collectionId": 3 }` (방식 A — collection_id 변경)
+- 가계부는 다중선택 일괄연결 전용 엔드포인트(`POST /transactions/link-collection`, §2-3) 사용.
+
+#### GET /api/v1/transactions?collectionId=3 (2026-07 리뉴얼 추가)
+- 지정 시 해당 묶음에 연결된 거래만(날짜 범위와 무관) 반환 — 묶음 요약 화면의 "연결된 거래 목록"에서 사용.
 
 ---
 

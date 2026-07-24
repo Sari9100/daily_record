@@ -102,7 +102,7 @@ UNIQUE KEY uk_xxx (col..., alive_uk)
 | Tag | UNIQUE(family_id, name, alive_uk) |
 | FamilyMembership | UNIQUE(family_id, person_id, alive_uk) |
 | ScheduleSubject/DiarySubject/Participant | UNIQUE(부모_id, person_id, alive_uk) |
-| TransactionTag/DiaryTag | UNIQUE(부모_id, tag_id, alive_uk) |
+| TransactionTag/DiaryTag/CollectionTag | UNIQUE(부모_id, tag_id, alive_uk) |
 | GoogleSyncState | UNIQUE(person_id, google_calendar_id, alive_uk) |
 | TelegramPersonMap | UNIQUE(telegram_user_id, alive_uk) |
 
@@ -328,6 +328,13 @@ public class DiaryTag extends FamilyScopedEntity {
 }
 
 @Entity
+public class CollectionTag extends FamilyScopedEntity {  // V4(2026-07 리뉴얼) — 묶음 태그. Schedule엔 태그를 붙이지 않고 Collection에만
+    private Long collectionId;
+    private Long tagId;
+    // UK는 04 DDL 참조(diary_tag/transaction_tag와 동일 패턴)
+}
+
+@Entity
 public class Collection extends FamilyScopedEntity {
     private String name;
     @Column(columnDefinition = "TEXT") private String description;
@@ -340,6 +347,9 @@ public class Collection extends FamilyScopedEntity {
 public class PersonSetting extends BaseEntity {   // family_id 없음
     private Long personId;                         // UK는 04 DDL 참조. soft-delete 비대상(설정은 물리 관리)
     @Enumerated(STRING) private DetailLevel sharedScheduleDetailLevel;
+    @Enumerated(STRING) private ViewMode ledgerDefaultView;    // INLINE/CALENDAR, V2(2026-07)
+    @Enumerated(STRING) private ViewMode scheduleDefaultView;  // INLINE/CALENDAR, V2
+    @Enumerated(STRING) private ViewMode diaryDefaultView;     // INLINE/CALENDAR, V2
 }
 ```
 

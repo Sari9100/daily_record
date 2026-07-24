@@ -77,11 +77,12 @@ public class DiaryService {
         this.softDeleteSupport = softDeleteSupport;
     }
 
-    public List<DiaryResponse> list(@Nullable LocalDate from, @Nullable LocalDate to, @Nullable String scope) {
+    public List<DiaryResponse> list(@Nullable LocalDate from, @Nullable LocalDate to, @Nullable String scope,
+                                    @Nullable Long collectionId, @Nullable String q) {
         AuthUser user = FamilyContext.require();
         Visibility scopeVisibility = parseScope(scope);
         List<Diary> diaries = diaryRepository.search(
-                user.familyId(), user.personId(), user.isParent(), scopeVisibility, from, to);
+                user.familyId(), user.personId(), user.isParent(), scopeVisibility, from, to, collectionId, q);
         if (diaries.isEmpty()) {
             return List.of();
         }

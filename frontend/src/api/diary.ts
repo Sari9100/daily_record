@@ -3,7 +3,14 @@ import { api } from './client';
 import type { ApiResponse } from '@/domain/types';
 import type { Diary, DiaryCreate } from '@/domain/diary';
 
-export type DiaryListParams = { from?: string; to?: string; view?: string; scope?: string };
+export type DiaryListParams = {
+  from?: string;
+  to?: string;
+  view?: string;
+  scope?: string;
+  collectionId?: number;
+  q?: string;
+};
 
 async function fetchDiaries(params: DiaryListParams): Promise<Diary[]> {
   const res = await api.get<ApiResponse<Diary[]>>('/diaries', { params });
@@ -13,8 +20,12 @@ async function fetchDiaries(params: DiaryListParams): Promise<Diary[]> {
   return res.data.data;
 }
 
-export function useDiaries(params: DiaryListParams) {
-  return useQuery({ queryKey: ['diaries', params], queryFn: () => fetchDiaries(params) });
+export function useDiaries(params: DiaryListParams, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: ['diaries', params],
+    queryFn: () => fetchDiaries(params),
+    enabled: options?.enabled,
+  });
 }
 
 export function useCachedDiary(id: number): Diary | undefined {

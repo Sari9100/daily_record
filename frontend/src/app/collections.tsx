@@ -1,64 +1,76 @@
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
-import {
-  useCollections,
-  useCreateCollection,
-  useDeleteCollection,
-  useUpdateCollection,
-} from '@/api/collection';
+import { BottomSheetModal, Button, Chip, EmptyState, ListRow, TextField } from '@/components/ui';
+import { Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
+import { useCollections, useDeleteCollection, useUpdateCollection } from '@/api/collection';
+import { useCreateTag, useTags } from '@/api/tag';
 import type { Collection } from '@/domain/collection';
 import { confirmAsync } from '@/lib/confirm';
 
+/** 묶음 생성은 일정(Schedule) 작성 화면을 베이스로 한다 — 여기선 기존 묶음 조회·수정·삭제만. */
 export default function CollectionsScreen() {
+  const theme = useTheme();
   const router = useRouter();
   const listQ = useCollections();
-  const createMut = useCreateCollection();
   const updateMut = useUpdateCollection();
   const deleteMut = useDeleteCollection();
+  const tagsQ = useTags();
+  const createTagMut = useCreateTag();
 
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [selectedTagIds, setSelectedTagIds] = useState<Set<number>>(new Set());
+  const [newTagName, setNewTagName] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const openCreate = () => {
-    setEditingId(null);
-    setName('');
-    setDescription('');
-    setError(null);
-    setOpen(true);
-  };
   const openEdit = (c: Collection) => {
     setEditingId(c.id);
     setName(c.name);
     setDescription(c.description ?? '');
+    // 태그는 이름으로만 내려오므로, 현재 태그 목록에서 이름이 일치하는 id를 찾아 프리필.
+    const ids = (tagsQ.data ?? []).filter((t) => c.tags.includes(t.name)).map((t) => t.id);
+    setSelectedTagIds(new Set(ids));
+    setNewTagName('');
     setError(null);
     setOpen(true);
   };
 
+  const toggleTag = (id: number) => {
+    setSelectedTagIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const addNewTag = async () => {
+    const trimmed = newTagName.trim();
+    if (!trimmed) return;
+    try {
+      const tag = await createTagMut.mutateAsync(trimmed);
+      setSelectedTagIds((prev) => new Set(prev).add(tag.id));
+      setNewTagName('');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '태그 생성에 실패했습니다.');
+    }
+  };
+
   const save = async () => {
-    if (!name.trim()) {
+    if (!name.trim() || editingId == null) {
       setError('묶음 이름을 입력하세요.');
       return;
     }
-    const body = { name: name.trim(), description: description.trim() || null };
+    const body = { name: name.trim(), description: description.trim() || null, tagIds: [...selectedTagIds] };
     try {
-      if (editingId == null) await createMut.mutateAsync(body);
-      else await updateMut.mutateAsync({ id: editingId, body });
+      await updateMut.mutateAsync({ id: editingId, body });
       setOpen(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : '저장에 실패했습니다.');
@@ -71,10 +83,10 @@ export default function CollectionsScreen() {
     }
   };
 
-  const saving = createMut.isPending || updateMut.isPending;
+  const saving = updateMut.isPending;
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]} edges={['bottom']}>
       {listQ.isLoading ? (
         <View style={styles.center}>
           <ActivityIndicator />
@@ -83,86 +95,76 @@ export default function CollectionsScreen() {
         <FlatList
           data={listQ.data ?? []}
           keyExtractor={(c) => String(c.id)}
-          ItemSeparatorComponent={() => <View style={styles.sep} />}
+          ItemSeparatorComponent={() => <View style={[styles.sep, { backgroundColor: theme.surfaceMuted }]} />}
           contentContainerStyle={(listQ.data?.length ?? 0) === 0 ? styles.emptyBox : styles.list}
-          ListHeaderComponent={<Text style={styles.note}>여행·행사 단위로 거래·일정·기록을 묶습니다. 항목은 각 작성 화면에서 연결하세요.</Text>}
-          ListEmptyComponent={<Text style={styles.emptyText}>묶음이 없습니다. + 로 추가하세요.</Text>}
+          ListHeaderComponent={
+            <Text style={[styles.note, { color: theme.textMuted }]}>
+              여행·행사 단위로 거래·일정·기록을 묶습니다. 새 묶음은 일정 작성 화면에서 만들고, 가계부·기록은 만들어진 묶음에 연결만 합니다.
+            </Text>
+          }
+          ListEmptyComponent={<EmptyState text="묶음이 없습니다. 일정 작성 화면에서 새 묶음을 만들어보세요." />}
           renderItem={({ item }) => (
-            <Pressable
-              style={styles.row}
-              onPress={() => router.push({ pathname: '/collection/[id]', params: { id: item.id } })}>
-              <View style={styles.rowLeft}>
-                <Text style={styles.rowTitle}>{item.name}</Text>
-                {item.description ? <Text style={styles.rowSub}>{item.description}</Text> : null}
-              </View>
-              <Pressable hitSlop={8} onPress={() => openEdit(item)} style={styles.iconBtn}>
-                <Ionicons name="pencil" size={18} color="#5f6368" />
-              </Pressable>
-              <Pressable hitSlop={8} onPress={() => remove(item)} style={styles.iconBtn}>
-                <Ionicons name="trash-outline" size={20} color="#d93025" />
-              </Pressable>
-            </Pressable>
+            <ListRow
+              title={item.name}
+              subtitle={[item.description, item.tags.join(', ')].filter(Boolean).join(' · ') || undefined}
+              onPress={() => router.push({ pathname: '/collection/[id]', params: { id: item.id } })}
+              trailing={
+                <View style={styles.actions}>
+                  <Pressable hitSlop={8} onPress={() => openEdit(item)} style={styles.iconBtn}>
+                    <Ionicons name="pencil" size={18} color={theme.textSecondary} />
+                  </Pressable>
+                  <Pressable hitSlop={8} onPress={() => remove(item)} style={styles.iconBtn}>
+                    <Ionicons name="trash-outline" size={20} color={theme.danger} />
+                  </Pressable>
+                </View>
+              }
+            />
           )}
         />
       )}
 
-      <Pressable style={styles.fab} onPress={openCreate}>
-        <Ionicons name="add" size={28} color="#fff" />
-      </Pressable>
+      <BottomSheetModal visible={open} onClose={() => setOpen(false)} title="묶음 수정">
+        <TextField label="이름" value={name} onChangeText={setName} placeholder="예) 제주 여행" />
+        <TextField label="설명 (선택)" value={description} onChangeText={setDescription} placeholder="설명" />
 
-      <Modal visible={open} animationType="slide" transparent onRequestClose={() => setOpen(false)}>
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>{editingId == null ? '묶음 추가' : '묶음 수정'}</Text>
-
-            <Text style={styles.label}>이름</Text>
-            <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="예) 제주 여행" placeholderTextColor="#9aa0a6" />
-
-            <Text style={styles.label}>설명 (선택)</Text>
-            <TextInput style={styles.input} value={description} onChangeText={setDescription} placeholder="설명" placeholderTextColor="#9aa0a6" />
-
-            {error && <Text style={styles.error}>{error}</Text>}
-
-            <View style={styles.modalActions}>
-              <Pressable style={[styles.btn, styles.cancel]} onPress={() => setOpen(false)}>
-                <Text style={styles.cancelText}>취소</Text>
-              </Pressable>
-              <Pressable style={[styles.btn, styles.saveBtn, saving && styles.disabled]} disabled={saving} onPress={save}>
-                {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveText}>저장</Text>}
-              </Pressable>
-            </View>
-          </View>
+        <Text style={[styles.label, { color: theme.textSecondary }]}>태그 (선택, 검색 목적)</Text>
+        <View style={styles.chips}>
+          {(tagsQ.data ?? []).map((t) => (
+            <Chip key={t.id} label={t.name} selected={selectedTagIds.has(t.id)} onPress={() => toggleTag(t.id)} />
+          ))}
         </View>
-      </Modal>
+        <View style={styles.newTagRow}>
+          <View style={styles.newTagInput}>
+            <TextField label="새 태그" value={newTagName} onChangeText={setNewTagName} placeholder="예) 여행" onSubmitEditing={addNewTag} />
+          </View>
+          <Button label="추가" variant="outline" onPress={addNewTag} loading={createTagMut.isPending} disabled={createTagMut.isPending} style={styles.addTagBtn} />
+        </View>
+
+        {error && <Text style={{ color: theme.danger, fontSize: 14, marginTop: 4 }}>{error}</Text>}
+
+        <View style={styles.modalActions}>
+          <Button label="취소" variant="outline" onPress={() => setOpen(false)} style={styles.flexBtn} />
+          <Button label="저장" onPress={save} loading={saving} disabled={saving} style={styles.flexBtn} />
+        </View>
+      </BottomSheetModal>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#fff' },
+  safe: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  list: { paddingHorizontal: 16, paddingVertical: 8, paddingBottom: 96 },
-  note: { fontSize: 13, color: '#9aa0a6', paddingVertical: 8 },
-  emptyBox: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  emptyText: { color: '#5f6368', fontSize: 15 },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, gap: 14 },
-  rowLeft: { flex: 1, gap: 3 },
+  list: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, paddingBottom: 96 },
+  note: { fontSize: 13, paddingVertical: Spacing.two },
+  emptyBox: { flexGrow: 1 },
+  sep: { height: 1 },
+  actions: { flexDirection: 'row', gap: Spacing.two },
   iconBtn: { padding: 2 },
-  rowTitle: { fontSize: 16, color: '#202124', fontWeight: '500' },
-  rowSub: { fontSize: 13, color: '#5f6368' },
-  sep: { height: 1, backgroundColor: '#f1f3f4' },
-  fab: { position: 'absolute', right: 20, bottom: 24, width: 56, height: 56, borderRadius: 28, backgroundColor: '#1a73e8', alignItems: 'center', justifyContent: 'center', elevation: 4 },
-  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-end' },
-  modalCard: { backgroundColor: '#fff', borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 20, gap: 10 },
-  modalTitle: { fontSize: 18, fontWeight: '700', color: '#202124', marginBottom: 4 },
-  label: { fontSize: 13, fontWeight: '600', color: '#3c4043', marginTop: 6 },
-  input: { borderWidth: 1, borderColor: '#dadce0', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, color: '#202124' },
-  error: { color: '#d93025', fontSize: 14, marginTop: 4 },
+  label: { fontSize: 13, fontWeight: '600', marginTop: 4 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
+  newTagRow: { flexDirection: 'row', gap: Spacing.two, alignItems: 'flex-end' },
+  newTagInput: { flex: 1 },
+  addTagBtn: { paddingHorizontal: Spacing.three },
   modalActions: { flexDirection: 'row', gap: 12, marginTop: 14 },
-  btn: { flex: 1, borderRadius: 10, paddingVertical: 14, alignItems: 'center' },
-  cancel: { borderWidth: 1, borderColor: '#dadce0' },
-  cancelText: { color: '#3c4043', fontSize: 16, fontWeight: '600' },
-  saveBtn: { backgroundColor: '#1a73e8' },
-  saveText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  disabled: { opacity: 0.6 },
+  flexBtn: { flex: 1 },
 });

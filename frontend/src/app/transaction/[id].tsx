@@ -1,7 +1,9 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { TransactionForm, type TransactionInitial } from '@/components/TransactionForm';
+import { EmptyState, SidePanel } from '@/components/ui';
+import { useTheme } from '@/hooks/use-theme';
 import {
   useCachedTransaction,
   useDeleteTransaction,
@@ -10,6 +12,7 @@ import {
 import { confirmAsync } from '@/lib/confirm';
 
 export default function EditTransactionScreen() {
+  const theme = useTheme();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const numId = Number(id);
@@ -20,8 +23,8 @@ export default function EditTransactionScreen() {
 
   if (!t) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.notFound}>거래를 찾을 수 없습니다. 목록에서 다시 열어주세요.</Text>
+      <View style={{ flex: 1, backgroundColor: theme.background }}>
+        <EmptyState text="거래를 찾을 수 없습니다. 목록에서 다시 열어주세요." />
       </View>
     );
   }
@@ -39,26 +42,23 @@ export default function EditTransactionScreen() {
   };
 
   return (
-    <TransactionForm
-      initial={initial}
-      submitting={updateMut.isPending}
-      deleting={deleteMut.isPending}
-      submitLabel="수정"
-      onSubmit={async (body) => {
-        await updateMut.mutateAsync(body);
-        router.back();
-      }}
-      onDelete={async () => {
-        if (await confirmAsync('이 거래를 삭제할까요?')) {
-          await deleteMut.mutateAsync(numId);
+    <SidePanel title="거래 편집" onClose={() => router.back()}>
+      <TransactionForm
+        initial={initial}
+        submitting={updateMut.isPending}
+        deleting={deleteMut.isPending}
+        submitLabel="수정"
+        onSubmit={async (body) => {
+          await updateMut.mutateAsync(body);
           router.back();
-        }
-      }}
-    />
+        }}
+        onDelete={async () => {
+          if (await confirmAsync('이 거래를 삭제할까요?')) {
+            await deleteMut.mutateAsync(numId);
+            router.back();
+          }
+        }}
+      />
+    </SidePanel>
   );
 }
-
-const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, backgroundColor: '#fff' },
-  notFound: { fontSize: 15, color: '#5f6368', textAlign: 'center' },
-});

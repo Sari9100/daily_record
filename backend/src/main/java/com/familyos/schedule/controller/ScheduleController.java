@@ -38,8 +38,9 @@ public class ScheduleController {
             @RequestParam(required = false) @Nullable Instant from,
             @RequestParam(required = false) @Nullable Instant to,
             @RequestParam(required = false) @Nullable ScheduleType type,
-            @RequestParam(required = false) @Nullable String scope) {
-        return ApiResponse.ok(scheduleService.list(from, to, type, scope));
+            @RequestParam(required = false) @Nullable String scope,
+            @RequestParam(required = false) @Nullable String q) {
+        return ApiResponse.ok(scheduleService.list(from, to, type, scope, q));
     }
 
     @PostMapping

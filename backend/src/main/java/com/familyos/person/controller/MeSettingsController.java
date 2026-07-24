@@ -30,6 +30,10 @@ public class MeSettingsController {
     @PutMapping
     public ApiResponse<PersonSettingResponse> updateSettings(
             @Valid @RequestBody UpdatePersonSettingRequest request) {
-        return ApiResponse.ok(settingService.updateMySettings(request.sharedScheduleDetailLevel()));
+        return ApiResponse.ok(settingService.updateMySettings(
+                request.sharedScheduleDetailLevel(),
+                request.ledgerDefaultView(),
+                request.scheduleDefaultView(),
+                request.diaryDefaultView()));
     }
 }

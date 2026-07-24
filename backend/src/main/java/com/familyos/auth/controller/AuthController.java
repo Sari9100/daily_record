@@ -1,5 +1,6 @@
 package com.familyos.auth.controller;
 
+import com.familyos.auth.dto.ChangePasswordRequest;
 import com.familyos.auth.dto.LoginRequest;
 import com.familyos.auth.dto.LoginResponse;
 import com.familyos.auth.dto.LogoutRequest;
@@ -11,6 +12,7 @@ import com.familyos.common.web.ApiResponse;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -48,5 +50,12 @@ public class AuthController {
     @GetMapping("/me")
     public ApiResponse<MeResponse> me() {
         return ApiResponse.ok(authService.me());
+    }
+
+    /** 본인 비밀번호 변경 — 성공 시 이 계정의 모든 세션(현재 기기 포함)이 로그아웃된다. */
+    @PutMapping("/password")
+    public ApiResponse<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        authService.changePassword(request.currentPassword(), request.newPassword());
+        return ApiResponse.ok();
     }
 }

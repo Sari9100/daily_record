@@ -169,4 +169,9 @@ public class Transaction extends FamilyScopedEntity implements Visible {
         this.memo = memo;
         this.collectionId = collectionId;
     }
+
+    /** 묶음(collection) 연결만 변경 — 다중선택 일괄연결(가계부→묶음) 전용, 다른 필드는 건드리지 않는다. */
+    public void changeCollection(@Nullable Long collectionId) {
+        this.collectionId = collectionId;
+    }
 }

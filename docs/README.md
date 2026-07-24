@@ -23,13 +23,14 @@
 ## 현재 진행 상태
 
 - ✅ 설계 문서 1~9 + 통합 마스터 완료
-- ⬜ 백엔드 패키지/레이어 구조 (구현 직전 작성)
-- ⬜ 구현 착수
+- ✅ 코어(인물·가계부·일정·일상기록·통합 타임라인) 구현 및 운영 배포(`ledger.saristock.com`, Mac Mini + Cloudflare Tunnel)
+- ✅ 프론트 리뉴얼(2026-07): 자체 디자인 시스템, 인라인/캘린더 뷰 전환, 묶음-태그 연결, 사이드패널 입력, 전체기간 검색
+- 🔄 텔레그램(Hermes) 입력, 구글 캘린더 양방향 동기화 — 진행 중
 
 ## 확정된 핵심 결정 (빠른 참조)
 
 - **스택**: Spring Boot 4.1 + Java 21 / JPA+MyBatis / MySQL / Flyway / Spring Security 7(JWT)
-- **프론트**: React Native + Expo (웹=react-native-web), gluestack-ui(NativeWind), 로직 공유+UI 분기
+- **프론트**: React Native + Expo (웹=react-native-web), 자체 경량 디자인 시스템(2026-07 리뉴얼 시 gluestack-ui/NativeWind에서 전환), 로직 공유+UI 분기
 - **인프라**: Mac Mini 로컬 서버 + 외장 SSD + Cloudflare Tunnel, Local-First·Cloud-Portable
 - **인물 모델**: Person / UserAccount 분리 (자녀 전환 시 데이터 이관 0)
 - **권한**: author / subject / visibility 3분리, family_id 멀티테넌트

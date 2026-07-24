@@ -352,6 +352,9 @@
 > 연결: **방식 A** — Transaction/Schedule/Diary/Photo가 각각 `collection_id`.
 > 한 항목이 여러 Collection 소속 필요 시 CollectionItem 브릿지로 전환.
 
+#### collection_tag (V4, 2026-07 리뉴얼 추가)
+`diary_tag`/`transaction_tag`와 동일 패턴(`collection_id`, `tag_id`, alive_uk 유니크). 묶음을 태그로 검색/분류하기 위함 — Schedule 자체엔 태그를 붙이지 않고, 묶음 태그를 통해 연결된 일정·가계부·기록까지 함께 조회.
+
 ---
 
 ### 3-7. 개인 설정
@@ -364,6 +367,9 @@
 | id | BIGINT PK | |
 | person_id | BIGINT FK→Person UNIQUE | 설정 소유자 |
 | shared_schedule_detail_level | ENUM('FULL','SUMMARY') | 타인 공유개인 일정 기본 표시 수준 |
+| ledger_default_view | ENUM('INLINE','CALENDAR') DEFAULT 'CALENDAR' | 가계부 화면 기본 뷰 (V2 추가, V3에서 기본값 CALENDAR로 변경) |
+| schedule_default_view | ENUM('INLINE','CALENDAR') DEFAULT 'CALENDAR' | 일정 화면 기본 뷰 (V2, V3) |
+| diary_default_view | ENUM('INLINE','CALENDAR') DEFAULT 'CALENDAR' | 기록 화면 기본 뷰 (V2, V3) |
 | (+ BaseEntity) | | |
 
 > **단순화 근거**: 부부 2명 규모에선 "배우자 일정 상세/요약" 전역 설정 하나로 충분.

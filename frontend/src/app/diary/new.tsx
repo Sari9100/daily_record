@@ -1,14 +1,16 @@
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { DiaryForm } from '@/components/DiaryForm';
 import { useCreateDiary } from '@/api/diary';
 
 export default function NewDiaryScreen() {
   const router = useRouter();
+  const { collectionId } = useLocalSearchParams<{ collectionId?: string }>();
   const createMut = useCreateDiary();
 
   return (
     <DiaryForm
+      initial={collectionId ? { collectionId: Number(collectionId) } : undefined}
       submitting={createMut.isPending}
       submitLabel="저장"
       onSubmit={async (body) => {

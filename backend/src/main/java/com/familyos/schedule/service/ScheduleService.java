@@ -82,7 +82,7 @@ public class ScheduleService {
     }
 
     public List<ScheduleResponse> list(@Nullable Instant from, @Nullable Instant to,
-                                       @Nullable ScheduleType type, @Nullable String scope) {
+                                       @Nullable ScheduleType type, @Nullable String scope, @Nullable String q) {
         AuthUser user = FamilyContext.require();
         ZoneId zone = viewerZone(user.personId());
         LocalDate fromDate = from == null ? null : from.atZone(zone).toLocalDate();
@@ -91,7 +91,7 @@ public class ScheduleService {
 
         List<Schedule> schedules = scheduleRepository.search(
                 user.familyId(), user.personId(), user.isParent(), type, scopeVisibility,
-                from, to, fromDate, toDate);
+                from, to, fromDate, toDate, q);
         if (schedules.isEmpty()) {
             return List.of();
         }

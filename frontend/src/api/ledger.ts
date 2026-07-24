@@ -18,6 +18,7 @@ export type TransactionListParams = {
   to?: string;
   type?: TransactionType;
   categoryId?: number;
+  collectionId?: number;
   scope?: string;
   page?: number;
   size?: number;
@@ -131,6 +132,23 @@ export function useDeleteTransaction() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['transactions'] });
       qc.invalidateQueries({ queryKey: ['timeline'] });
+    },
+  });
+}
+
+/** 가계부 다중선택 → 묶음 일괄연결. */
+export function useLinkTransactionsToCollection() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ transactionIds, collectionId }: { transactionIds: number[]; collectionId: number | null }) => {
+      const res = await api.post<ApiResponse<number>>('/transactions/link-collection', { transactionIds, collectionId });
+      if (res.data.data == null) throw new Error(res.data.error?.message ?? '묶음 연결에 실패했습니다.');
+      return res.data.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['transactions'] });
+      qc.invalidateQueries({ queryKey: ['timeline'] });
+      qc.invalidateQueries({ queryKey: ['collection-summary'] });
     },
   });
 }

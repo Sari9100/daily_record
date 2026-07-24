@@ -2,9 +2,11 @@ import { useMemo } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { endOfMonth, format, startOfMonth } from 'date-fns';
 
+import { Badge, EmptyState, Fab } from '@/components/ui';
+import { Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { useTimeline } from '@/api/timeline';
 import type { TimelineDay, TimelineItem, TimelineItemType } from '@/domain/types';
 
@@ -19,34 +21,42 @@ function formatAmount(amount: number): string {
   return `${Math.round(amount).toLocaleString('ko-KR')}원`;
 }
 
-function ItemRow({ item }: { item: TimelineItem }) {
-  const meta = TYPE_META[item.type] ?? { label: item.type, color: '#5f6368' };
+function ItemRow({ item, onPress }: { item: TimelineItem; onPress: () => void }) {
+  const theme = useTheme();
+  const meta = TYPE_META[item.type] ?? { label: item.type, color: theme.textMuted };
   return (
-    <View style={styles.itemRow}>
-      <Text style={styles.itemTime}>{item.time ?? '종일'}</Text>
-      <View style={[styles.badge, { backgroundColor: meta.color }]}>
-        <Text style={styles.badgeText}>{meta.label}</Text>
-      </View>
-      <Text style={styles.itemTitle} numberOfLines={1}>
+    <Pressable style={styles.itemRow} onPress={onPress}>
+      <Text style={[styles.itemTime, { color: theme.textSecondary }]}>{item.time ?? '종일'}</Text>
+      <Badge label={meta.label} color={meta.color} />
+      <Text style={[styles.itemTitle, { color: theme.text }]} numberOfLines={1}>
         {item.title ?? '(비공개)'}
       </Text>
-      {item.amount != null && <Text style={styles.itemAmount}>{formatAmount(item.amount)}</Text>}
-    </View>
+      {item.amount != null && <Text style={[styles.itemAmount, { color: theme.primary }]}>{formatAmount(item.amount)}</Text>}
+    </Pressable>
   );
 }
 
-function DayBlock({ day }: { day: TimelineDay }) {
+function itemRoute(item: TimelineItem): { pathname: string; params: { id: number } } | null {
+  if (item.type === 'TRANSACTION') return { pathname: '/transaction/[id]', params: { id: item.id } };
+  if (item.type === 'SCHEDULE') return { pathname: '/schedule/[id]', params: { id: item.id } };
+  if (item.type === 'DIARY') return { pathname: '/diary/[id]', params: { id: item.id } };
+  return null;
+}
+
+function DayBlock({ day, onOpenItem }: { day: TimelineDay; onOpenItem: (item: TimelineItem) => void }) {
+  const theme = useTheme();
   return (
     <View style={styles.dayBlock}>
-      <Text style={styles.dayHeader}>{day.date}</Text>
+      <Text style={[styles.dayHeader, { color: theme.text }]}>{day.date}</Text>
       {day.items.map((item) => (
-        <ItemRow key={`${item.type}-${item.id}`} item={item} />
+        <ItemRow key={`${item.type}-${item.id}`} item={item} onPress={() => onOpenItem(item)} />
       ))}
     </View>
   );
 }
 
 export default function TimelineScreen() {
+  const theme = useTheme();
   const router = useRouter();
   const range = useMemo(() => {
     const now = new Date();
@@ -57,6 +67,11 @@ export default function TimelineScreen() {
   }, []);
 
   const { data, isLoading, isError, error, refetch, isRefetching } = useTimeline(range);
+
+  const openItem = (item: TimelineItem) => {
+    const route = itemRoute(item);
+    if (route) router.push(route as never);
+  };
 
   if (isLoading) {
     return (
@@ -69,7 +84,7 @@ export default function TimelineScreen() {
   if (isError) {
     return (
       <View style={styles.center}>
-        <Text style={styles.errorText}>
+        <Text style={[styles.errorText, { color: theme.danger }]}>
           타임라인을 불러오지 못했습니다.{'\n'}
           {error instanceof Error ? error.message : ''}
         </Text>
@@ -80,50 +95,31 @@ export default function TimelineScreen() {
   const days = data?.days ?? [];
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]} edges={['bottom']}>
       <FlatList
         data={days}
         keyExtractor={(d) => d.date}
-        renderItem={({ item }) => <DayBlock day={item} />}
+        renderItem={({ item }) => <DayBlock day={item} onOpenItem={openItem} />}
         contentContainerStyle={days.length === 0 ? styles.emptyContainer : styles.listContent}
         onRefresh={refetch}
         refreshing={isRefetching}
-        ListEmptyComponent={
-          <Text style={styles.emptyText}>이번 달 기록이 아직 없어요.{'\n'}가계부·일정·기록을 추가해 보세요.</Text>
-        }
+        ListEmptyComponent={<EmptyState text={'이번 달 기록이 아직 없어요.\n가계부·일정·기록을 추가해 보세요.'} />}
       />
-      <Pressable style={styles.fab} onPress={() => router.push('/transaction/new')}>
-        <Ionicons name="add" size={28} color="#fff" />
-      </Pressable>
+      <Fab onPress={() => router.push('/transaction/new')} />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#fff' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  listContent: { padding: 16, gap: 16 },
-  emptyContainer: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  emptyText: { textAlign: 'center', color: '#5f6368', fontSize: 15, lineHeight: 22 },
-  errorText: { textAlign: 'center', color: '#d93025', fontSize: 14, lineHeight: 20 },
-  dayBlock: { gap: 8 },
-  dayHeader: { fontSize: 15, fontWeight: '700', color: '#202124', marginBottom: 2 },
+  safe: { flex: 1 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.four },
+  listContent: { padding: Spacing.three, gap: Spacing.three },
+  emptyContainer: { flexGrow: 1 },
+  errorText: { textAlign: 'center', fontSize: 14, lineHeight: 20 },
+  dayBlock: { gap: Spacing.two },
+  dayHeader: { fontSize: 15, fontWeight: '700', marginBottom: 2 },
   itemRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
-  itemTime: { width: 44, fontSize: 13, color: '#5f6368' },
-  badge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
-  badgeText: { color: '#fff', fontSize: 11, fontWeight: '600' },
-  itemTitle: { flex: 1, fontSize: 15, color: '#202124' },
-  itemAmount: { fontSize: 14, fontWeight: '600', color: '#1a73e8' },
-  fab: {
-    position: 'absolute',
-    right: 20,
-    bottom: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#1a73e8',
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 4,
-  },
+  itemTime: { width: 44, fontSize: 13 },
+  itemTitle: { flex: 1, fontSize: 15 },
+  itemAmount: { fontSize: 14, fontWeight: '600' },
 });
